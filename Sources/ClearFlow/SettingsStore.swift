@@ -4,6 +4,10 @@ import ClearFlowCore
 
 struct AppSettings {
     static let defaults = UserDefaults.standard
+    static var shortcut: Shortcut {
+        get { Shortcut.load(defaults.data(forKey: "dictationShortcut")) }
+        set { defaults.set(newValue.encoded, forKey: "dictationShortcut") }
+    }
     static var endpoint: String {
         get { defaults.string(forKey: "endpoint") ?? (Bundle.main.object(forInfoDictionaryKey: "ClearFlowEndpoint") as? String ?? "http://127.0.0.1:8768") }
         set { defaults.set(newValue, forKey: "endpoint") }

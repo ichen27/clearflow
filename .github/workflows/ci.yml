@@ -16,6 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: scripts/test-native.sh
+      - run: scripts/test-shortcut-registration.sh
       - run: scripts/build-app.sh
       - run: python3 scripts/check-distribution.py
   worker:

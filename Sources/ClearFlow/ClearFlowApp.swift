@@ -61,7 +61,7 @@ import ClearFlowCore
         let menu = NSMenu()
         statusMenuItem = NSMenuItem(title: model.status, action: nil, keyEquivalent: "")
         menu.addItem(statusMenuItem); menu.addItem(.separator())
-        startItem = NSMenuItem(title: "Start dictation     ⌥⇧Space", action: #selector(toggle), keyEquivalent: "")
+        startItem = NSMenuItem(title: "Start dictation", action: #selector(toggle), keyEquivalent: "")
         startItem.target = self; menu.addItem(startItem)
         let open = NSMenuItem(title: "Open ClearFlow…", action: #selector(showWindow), keyEquivalent: "")
         open.target = self; menu.addItem(open)
@@ -77,16 +77,22 @@ import ClearFlowCore
         overlay.contentView = NSHostingView(rootView: OverlayView(model: model))
         model.showWindow = { [weak self] in self?.showWindow() }
         shortcut.onPress = { [weak self] in self?.model.toggle() }
-        model.shortcutAvailable = shortcut.register()
-        subscription = model.$mode.combineLatest(model.$status).sink { [weak self] _, _ in
+        model.shortcutAvailable = shortcut.register(model.shortcut)
+        model.registerShortcut = { [weak self] value in
+            guard let self else { return false }
+            return self.shortcut.register(value)
+        }
+        subscription = model.$mode.combineLatest(model.$status, model.$shortcut).sink { [weak self] _, _, _ in
             DispatchQueue.main.async { self?.refresh() }
         }
+        refresh()
         // Open the controls at launch; recording still requires an explicit action.
         showWindow()
     }
     private func refresh() {
         statusMenuItem.title = String(model.status.prefix(85))
-        startItem.title = model.mode == .recording ? "Finish dictation     ⌥⇧Space" : model.busy ? "Cancel     ⌥⇧Space" : "Start dictation     ⌥⇧Space"
+        let action = model.mode == .recording ? "Finish dictation" : model.busy ? "Cancel" : "Start dictation"
+        startItem.title = action + "     " + model.shortcut.display
         statusItem.button?.image = NSImage(systemSymbolName: model.mode == .recording ? "mic.fill" : model.mode == .transcribing ? "hourglass" : "waveform",
                                            accessibilityDescription: "ClearFlow")
         if model.busy {

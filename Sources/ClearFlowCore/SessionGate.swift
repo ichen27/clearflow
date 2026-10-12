@@ -62,8 +62,8 @@ public enum DestinationPolicy {
     }
     public static func failure(accessibility: Bool, hasApp: Bool, hasField: Bool, secure: Bool, editable: Bool) -> String? {
         guard accessibility else { return "Enable Accessibility for ClearFlow in System Settings to insert text automatically." }
-        guard hasApp else { return "Select a text field in another app, then start with Option–Shift–Space." }
-        guard hasField else { return "The selected app did not expose a focused text field. Click its editor, then start with Option–Shift–Space." }
+        guard hasApp else { return "Select a text field in another app, then press your dictation shortcut." }
+        guard hasField else { return "The selected app did not expose a focused text field. Click its editor, then press your dictation shortcut." }
         guard !secure else { return "Automatic insertion is disabled in password fields." }
         guard editable else { return "The focused control is not an editable text field. Click inside the editor first." }
         return nil

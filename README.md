@@ -49,6 +49,10 @@ python3.12 local-stt/run.py --configure-app /Applications/ClearFlow.app
 
 The configuration command sends the token directly into macOS Keychain without displaying it or putting it in command-line arguments. Run it from your logged-in macOS desktop terminal so Keychain is available. Restart ClearFlow after configuring it. No Cloudflare account or Tailscale installation is needed for same-Mac use.
 
+### Change the shortcut
+
+In **Settings → General**, click the shortcut beside the pencil. Choose modifiers and a key, then click **Apply shortcut**. Changes take effect immediately and survive a restart; no service configuration or separate Save is required. Include Control, Option, or Command. Key names refer to US keyboard positions. If macOS reports a conflict, ClearFlow keeps the previous shortcut. Avoid combinations already used by your editor or system; some app-local shortcuts cannot be detected. **Use default**, then Apply, restores Option–Shift–Space. Finish or cancel active dictation before editing.
+
 ### 3. Dictate
 
 1. Open ClearFlow. In Settings → General, allow Microphone and Accessibility through the normal macOS prompts.
@@ -77,6 +81,7 @@ Deploy the supplied Worker in **your own account**, generate your own secret, an
 
 ```sh
 scripts/test-native.sh
+scripts/test-shortcut-registration.sh
 scripts/build-app.sh
 python3 -m unittest discover -s local-stt -v
 python3 scripts/check-distribution.py
