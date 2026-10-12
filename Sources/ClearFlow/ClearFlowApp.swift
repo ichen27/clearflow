@@ -6,6 +6,12 @@ import ClearFlowCore
 @main @MainActor enum ClearFlowMain {
     static func main() {
         let args = CommandLine.arguments
+        if args.count == 4 && args[1] == "--render-reveal" {
+            guard ["landscape", "portrait"].contains(args[3]) else { fputs("Use landscape or portrait\n", stderr); exit(1) }
+            do { try SocialPreview.render(to: URL(fileURLWithPath: args[2]), portrait: args[3] == "portrait") }
+            catch { fputs("Reveal rendering failed\n", stderr); exit(1) }
+            return
+        }
         if args.count == 3 && args[1] == "--render-media" {
             do { try MediaPreview.render(to: URL(fileURLWithPath: args[2])) }
             catch { fputs("Media rendering failed\n", stderr); exit(1) }
