@@ -35,6 +35,47 @@ import ClearFlowCore
         let final = reserve(second.keyCode)
         require(final != nil, "unregister must release the current shortcut")
         if let final { UnregisterEventHotKey(final) }
+        let recorder = ShortcutRecorderButton(frame: NSRect(x: 0, y: 0, width: 160, height: 32))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 200, height: 100), styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView?.addSubview(recorder)
+        var chosen = first
+        recorder.onBegin = { shortcut.unregister() }
+        recorder.onEnd = { require(shortcut.register(chosen), "restore shortcut after recording") }
+        recorder.onCapture = { value in
+            guard shortcut.register(value) else { return "Conflict" }
+            chosen = value; return nil
+        }
+        func key(_ code: UInt16, _ flags: NSEvent.ModifierFlags = []) -> NSEvent {
+            NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags, timestamp: 0,
+                windowNumber: window.windowNumber, context: nil, characters: "", charactersIgnoringModifiers: "",
+                isARepeat: false, keyCode: code)!
+        }
+        recorder.performClick(nil)
+        require(recorder.isRecording, "click starts recording")
+        recorder.keyDown(with: key(0))
+        require(recorder.isRecording && chosen == first, "plain typing key must not overwrite shortcut")
+        recorder.keyDown(with: key(100, [.control, .option, .shift, .command, .capsLock]))
+        require(!recorder.isRecording && chosen == second, "keypress saves combination and ignores Caps Lock")
+        recorder.performClick(nil)
+        recorder.keyDown(with: key(53))
+        require(!recorder.isRecording && chosen == second, "Escape cancels without changes")
+        recorder.performClick(nil)
+        _ = recorder.resignFirstResponder()
+        require(!recorder.isRecording && chosen == second, "losing focus cancels capture")
+        recorder.performClick(nil)
+        guard let occupied = reserve(first.keyCode) else { fatalError("Test key unexpectedly occupied") }
+        recorder.keyDown(with: key(98, [.control, .option, .shift, .command]))
+        require(recorder.isRecording && chosen == second, "conflict keeps recorder active without saving")
+        recorder.keyDown(with: key(53))
+        let previous = reserve(second.keyCode)
+        if let previous { UnregisterEventHotKey(previous) }
+        require(previous == nil, "cancel after conflict restores previous shortcut")
+        UnregisterEventHotKey(occupied)
+        recorder.performClick(nil)
+        NotificationCenter.default.post(name: NSWindow.didResignKeyNotification, object: window)
+        require(!recorder.isRecording, "leaving window cancels recording")
+        shortcut.unregister()
+        print("PASS: shortcut recorder key capture, invalid input, Escape and focus loss")
         print("PASS: Carbon registration, reapply, conflict preservation, replacement and cleanup")
     }
 }
