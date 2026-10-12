@@ -21,6 +21,7 @@ Never commit credentials, actual service endpoints, account IDs, local machine p
 
 ```sh
 scripts/test-native.sh
+scripts/test-shortcut-registration.sh
 scripts/build-app.sh
 python3 -m unittest discover -s local-stt -v
 python3 scripts/check-distribution.py

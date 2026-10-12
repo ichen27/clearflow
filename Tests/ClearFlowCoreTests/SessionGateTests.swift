@@ -9,6 +9,18 @@ func XCTAssertNil<T>(_ a: T?, file: String = #file, line: Int = #line) { XCTAsse
 func XCTAssertNotNil<T>(_ a: T?, file: String = #file, line: Int = #line) { XCTAssertTrue(a != nil, "Expected value", file: file, line: line) }
 
 final class SessionGateTests {
+    func testShortcutRejectsTypingKeysAndMalformedSavedValues() {
+        XCTAssertFalse(Shortcut(keyCode: 0, modifiers: []).isValid)
+        XCTAssertFalse(Shortcut(keyCode: 0, modifiers: [.shift]).isValid)
+        XCTAssertFalse(Shortcut(keyCode: 999, modifiers: [.option]).isValid)
+        XCTAssertFalse(Shortcut(keyCode: 49, modifiers: .init(rawValue: 128)).isValid)
+        XCTAssertTrue(Shortcut(keyCode: 49, modifiers: [.control, .option]).isValid)
+        XCTAssertEqual(Shortcut.load(Data("{}".utf8)), .default)
+        XCTAssertEqual(Shortcut.load(Data("{\"keyCode\":0,\"modifiers\":0}".utf8)), .default)
+        let chosen = Shortcut(keyCode: 40, modifiers: [.control, .shift])
+        XCTAssertEqual(Shortcut.load(chosen.encoded), chosen)
+        XCTAssertEqual(chosen.display, "⌃ ⇧ K")
+    }
     func testOnlyFinalResultForCurrentRecordingCanComplete() {
         var gate = SessionGate()
         let id = UUID()
@@ -76,6 +88,7 @@ final class SessionGateTests {
 @main enum CoreChecks {
  static func main() {
   let tests = SessionGateTests()
+  tests.testShortcutRejectsTypingKeysAndMalformedSavedValues()
   tests.testOnlyFinalResultForCurrentRecordingCanComplete()
   tests.testCancelledRequestCannotOverwriteNewDictation()
   tests.testEndpointRejectsCredentialAndQueryLeakage()

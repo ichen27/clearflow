@@ -22,6 +22,18 @@ import ClearFlowCore
     @Published var hasAccessibility = AXIsProcessTrusted()
     @Published var microphoneGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     @Published var shortcutAvailable = true
+    @Published private(set) var shortcut = AppSettings.shortcut
+    var registerShortcut: ((Shortcut) -> Bool)?
+    func changeShortcut(_ value: Shortcut) -> String? {
+        guard !busy else { return "Finish or cancel dictation before changing the shortcut." }
+        guard value.isValid else { return "Include Control, Option, or Command with a key." }
+        guard let registerShortcut, registerShortcut(value) else {
+            return "Could not register this shortcut. It may be used by another app or macOS. Choose another combination; your previous shortcut is unchanged."
+        }
+        AppSettings.shortcut = value
+        shortcut = value; shortcutAvailable = true
+        return nil
+    }
     var showWindow: (() -> Void)?
     var lastExternalApp: NSRunningApplication?
     private var demoMode = false
@@ -39,6 +51,7 @@ import ClearFlowCore
     init(demo: Bool = false) {
         if demo {
             demoMode = true
+            shortcut = .default
             endpoint = "http://127.0.0.1:8768"; vocabulary = ""; token = ""
             saveHistory = false; hasAccessibility = true; microphoneGranted = true
             history = [Transcript(id: UUID(), date: Date(timeIntervalSince1970: 1780322400),

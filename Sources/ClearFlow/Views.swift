@@ -1,4 +1,5 @@
 import SwiftUI
+import ClearFlowCore
 
 private enum FlowTheme {
     static let shell = Color(red: 0.965, green: 0.960, blue: 0.945)
@@ -66,9 +67,9 @@ struct MainView: View {
             Spacer()
             VStack(alignment: .leading, spacing: 12) {
                 Text("Make yourself heard").font(.system(size: 12, weight: .semibold))
-                Text("Press Option–Shift–Space\nto start and finish.")
+                Text("Press \(model.shortcut.display)\nto start and finish.")
                     .font(.system(size: 12)).foregroundStyle(FlowTheme.muted).lineSpacing(4)
-                HStack(spacing: 5) { keycap("⌥"); keycap("⇧"); keycap("space") }
+                HStack(spacing: 3) { ForEach(model.shortcut.keycaps, id: \.self) { keycap($0) } }
             }.padding(15).frame(maxWidth: .infinity, alignment: .leading)
                 .background(.white, in: RoundedRectangle(cornerRadius: 13))
                 .overlay(RoundedRectangle(cornerRadius: 13).stroke(FlowTheme.line))
@@ -98,7 +99,7 @@ struct MainView: View {
     }
     private func keycap(_ text: String) -> some View {
         Text(text).font(.system(size: 12, weight: .medium))
-            .padding(.horizontal, 9).padding(.vertical, 5)
+            .padding(.horizontal, 5).padding(.vertical, 5)
             .background(FlowTheme.shell, in: RoundedRectangle(cornerRadius: 5))
             .overlay(RoundedRectangle(cornerRadius: 5).stroke(FlowTheme.line))
     }
@@ -150,7 +151,7 @@ struct MainView: View {
                 Text(model.mode == .recording ? "Go on. We’re listening." : model.mode == .transcribing ? "Finding your words." : "Less typing.\nMore you.")
                     .font(.system(size: 29, weight: .regular, design: .serif))
                     .foregroundStyle(Color(red: 0.98, green: 0.97, blue: 0.91)).lineSpacing(0)
-                Text(model.mode == .recording ? "Press Option–Shift–Space when you’re done." : model.mode == .transcribing ? "Your transcript will be ready in a moment." : "Speak naturally, wherever you write.")
+                Text(model.mode == .recording ? "Press \(model.shortcut.display) when you’re done." : model.mode == .transcribing ? "Your transcript will be ready in a moment." : "Speak naturally, wherever you write.")
                     .font(.system(size: 12)).foregroundStyle(.white.opacity(0.80))
                 HStack(spacing: 9) {
                     Button { model.toggle() } label: {
@@ -208,7 +209,7 @@ struct MainView: View {
                         Image(systemName: query.isEmpty ? "text.bubble" : "magnifyingglass").font(.system(size: 25)).foregroundStyle(FlowTheme.muted)
                         Text(query.isEmpty ? "Your next thought starts here" : "No matching dictations")
                             .font(.system(size: 16, weight: .medium))
-                        Text(query.isEmpty ? "Press ⌥ ⇧ Space, say what’s on your mind,\nthen press it again. Your words will appear here." : "Try another word or phrase.")
+                        Text(query.isEmpty ? "Press \(model.shortcut.display), say what’s on your mind,\nthen press it again. Your words will appear here." : "Try another word or phrase.")
                             .font(.system(size: 12)).foregroundStyle(FlowTheme.muted).multilineTextAlignment(.center).lineSpacing(4)
                     }.frame(maxWidth: .infinity).padding(.vertical, 38)
                 } else {
@@ -263,6 +264,7 @@ private struct FlowSettings: View {
     @ObservedObject var model: DictationModel
     @Environment(\.dismiss) private var dismiss
     @State private var section = "General"
+    @State private var editingShortcut = false
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
@@ -272,7 +274,7 @@ private struct FlowSettings: View {
                 sectionButton("Transcription", "waveform")
                 sectionButton("Data & privacy", "hand.raised")
                 Spacer()
-                Text("ClearFlow 0.3").font(.system(size: 11)).foregroundStyle(FlowTheme.muted).padding(14)
+                Text("ClearFlow " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")).font(.system(size: 11)).foregroundStyle(FlowTheme.muted).padding(14)
             }.padding(10).frame(width: 174).background(FlowTheme.shell)
             VStack(alignment: .leading, spacing: 24) {
                 HStack {
@@ -324,10 +326,15 @@ private struct FlowSettings: View {
                     Text("Press once to speak. Press again to finish.").font(.system(size: 12)).foregroundStyle(FlowTheme.muted)
                 }
                 Spacer()
-                Text("⌥ ⇧ Space").font(.system(size: 14, weight: .medium)).padding(11)
-                    .background(FlowTheme.selected, in: RoundedRectangle(cornerRadius: 8))
+                Button { editingShortcut = true } label: {
+                    HStack { Text(model.shortcut.display); Image(systemName: "pencil") }
+                }.buttonStyle(FlowButton()).disabled(model.busy)
+                    .accessibilityLabel("Change shortcut")
+                    .popover(isPresented: $editingShortcut) {
+                        ShortcutEditor(model: model, draft: model.shortcut)
+                    }
             }
-            if !model.shortcutAvailable { Text("This shortcut is in use by another app. Close that app and restart ClearFlow, or use Start dictation.")
+            if !model.shortcutAvailable { Text("This shortcut is unavailable. Choose another combination above, or use Start dictation.")
                 .font(.caption).foregroundStyle(.orange).padding(.top, 8) }
             rule()
             row("Microphone", "Use your Mac’s default input.", granted: model.microphoneGranted) { model.requestMicrophone() }
@@ -373,6 +380,47 @@ private struct FlowSettings: View {
             rule()
             Button("Clear recent history") { model.clearHistory() }.buttonStyle(FlowButton())
         }
+    }
+}
+private struct ShortcutEditor: View {
+    @ObservedObject var model: DictationModel
+    @State var draft: Shortcut
+    @State private var error = ""
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Change shortcut").font(.headline)
+            Text("Choose modifiers and a key. Applies immediately.")
+                .font(.caption).foregroundStyle(.secondary)
+            HStack {
+                modifier("⌃ Control", .control)
+                modifier("⌥ Option", .option)
+                modifier("⇧ Shift", .shift)
+                modifier("⌘ Command", .command)
+            }
+            Picker("Key (US keyboard positions)", selection: $draft.keyCode) {
+                ForEach(Shortcut.keys, id: \.code) { key in Text(key.name).tag(key.code) }
+            }
+            .onChange(of: draft.keyCode) { _, _ in error = "" }
+            Text(draft.display).font(.title3.monospaced())
+            if !draft.isValid { Text("Include Control, Option, or Command.").font(.caption).foregroundStyle(.orange) }
+            if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
+            HStack {
+                Button("Use default") { draft = .default; error = "" }
+                Spacer()
+                Button("Cancel") { dismiss() }
+                Button("Apply shortcut") {
+                    if let issue = model.changeShortcut(draft) { error = issue }
+                    else { dismiss() }
+                }.disabled(!draft.isValid || model.busy)
+            }
+        }.padding(22).frame(width: 470)
+    }
+    private func modifier(_ title: String, _ flag: Shortcut.Modifiers) -> some View {
+        Toggle(title, isOn: Binding(get: { draft.modifiers.contains(flag) }, set: { enabled in
+            if enabled { draft.modifiers.insert(flag) } else { draft.modifiers.remove(flag) }
+            error = ""
+        })).toggleStyle(.checkbox).font(.caption)
     }
 }
 struct Waveform: View {
