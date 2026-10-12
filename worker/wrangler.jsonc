@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "clearflow-dictation",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-11",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "ai": {
+    "binding": "AI",
+    "remote": true
+  },
+  "secrets": {
+    "required": [
+      "AUTH_TOKEN"
+    ]
+  },
+  "ratelimits": [
+    {
+      "name": "TRANSCRIBE_LIMITER",
+      "namespace_id": "2026101101",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    }
+  ],
+  "observability": {
+    "enabled": false
+  }
+}
