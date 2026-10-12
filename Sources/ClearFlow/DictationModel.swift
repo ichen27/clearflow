@@ -39,7 +39,12 @@ import ClearFlowCore
     var registerShortcut: ((Shortcut) -> Bool)?
     func changeShortcut(_ value: Shortcut) -> String? {
         guard !busy else { return "Finish or cancel dictation before changing the shortcut." }
-        guard value.isValid else { return "Include Control, Option, or Command with a key." }
+        guard value.isValid else { return "Tap Fn alone, or include Control, Option, or Command with a key." }
+        if value.isFn && !AXIsProcessTrusted() {
+            suspendShortcut?()
+            AppSettings.shortcut = value; shortcut = value; shortcutAvailable = false
+            return nil // Save the selection; visibly report the permission needed to activate it.
+        }
         guard let registerShortcut, registerShortcut(value) else {
             return "This shortcut is unavailable or used by another app."
         }
@@ -85,6 +90,10 @@ import ClearFlowCore
     func refreshPermissions() {
         guard !demoMode else { return }
         hasAccessibility = AXIsProcessTrusted()
+        if shortcut.isFn {
+            if !hasAccessibility { suspendShortcut?(); shortcutAvailable = false }
+            else if !shortcutAvailable { shortcutAvailable = registerShortcut?(shortcut) ?? false }
+        }
         microphoneGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     }
     func grantAccessibility() {

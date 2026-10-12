@@ -329,7 +329,13 @@ private struct FlowSettings: View {
             }
             Text(model.shortcutMessage.isEmpty ? "Click the shortcut, then press the new key combination." : model.shortcutMessage)
                 .font(.caption).foregroundStyle(FlowTheme.muted).padding(.top, 8)
-            if !model.shortcutAvailable { Text("This shortcut is unavailable. Choose another combination above, or use Start dictation.")
+            if model.shortcut.isFn {
+                Text("Tap Fn to start or finish. In macOS Keyboard settings, set ‘Press 🌐 key to’ to ‘Do Nothing’. Disable Fn in other dictation apps to avoid conflicts.")
+                    .font(.caption).foregroundStyle(FlowTheme.muted).padding(.top, 8)
+            }
+            if !model.shortcutAvailable { Text(model.shortcut.isFn && !model.hasAccessibility
+                ? "Fn is saved. Enable Accessibility below, then refresh permission status to activate it."
+                : "This shortcut is unavailable. Choose another combination above, or use Start dictation.")
                 .font(.caption).foregroundStyle(.orange).padding(.top, 8) }
             rule()
             row("Microphone", "Use your Mac’s default input.", granted: model.microphoneGranted) { model.requestMicrophone() }
