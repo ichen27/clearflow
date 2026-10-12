@@ -392,6 +392,8 @@ struct RecordingBar: View {
     let samples: [Double]
     let recording: Bool
     let processingLabel: String
+    // Deterministic spinner for offscreen documentation only; normal UI uses ProgressView.
+    var previewRotation: Double? = nil
     let onCancel: () -> Void
     let onFinish: () -> Void
     var body: some View {
@@ -405,6 +407,11 @@ struct RecordingBar: View {
             }.buttonStyle(.plain).help("Cancel dictation").accessibilityLabel("Cancel dictation")
             if recording {
                 Waveform(samples: samples)
+            } else if let previewRotation {
+                Circle().trim(from: 0.08, to: 0.80)
+                    .stroke(.white, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                    .frame(width: 10, height: 10).rotationEffect(.degrees(previewRotation))
+                    .frame(width: 38, height: 14).accessibilityLabel(processingLabel)
             } else {
                 ProgressView().controlSize(.mini).colorScheme(.dark)
                     .frame(width: 38, height: 14)

@@ -1,0 +1,7 @@
+I built ClearFlow: open-source dictation for Mac.
+
+⌥⇧Space → speak → text in your selected field.
+
+Runs Whisper large-v3-turbo on your own hardware. No cloud account required.
+
+App + source: https://github.com/ichen27/clearflow
