@@ -9,6 +9,38 @@ func XCTAssertNil<T>(_ a: T?, file: String = #file, line: Int = #line) { XCTAsse
 func XCTAssertNotNil<T>(_ a: T?, file: String = #file, line: Int = #line) { XCTAssertTrue(a != nil, "Expected value", file: file, line: line) }
 
 final class SessionGateTests {
+    func testFnTapFiresOnceOnReleaseAndIgnoresChords() {
+        XCTAssertTrue(Shortcut.fn.isValid)
+        XCTAssertEqual(Shortcut.load(Shortcut.fn.encoded), .fn)
+        XCTAssertEqual(Shortcut.fn.display, "Fn")
+        var held = FnTap(heldAtStart: true)
+        XCTAssertTrue(held.isPressed)
+        XCTAssertFalse(held.flagsChanged(keyCode: 63, fnDown: false, otherModifiers: false))
+        XCTAssertFalse(held.isPressed)
+        _ = held.flagsChanged(keyCode: 63, fnDown: true, otherModifiers: false)
+        XCTAssertTrue(held.flagsChanged(keyCode: 63, fnDown: false, otherModifiers: false))
+        var tap = FnTap()
+        XCTAssertFalse(tap.flagsChanged(keyCode: 63, fnDown: false, otherModifiers: false))
+        XCTAssertFalse(tap.flagsChanged(keyCode: 63, fnDown: true, otherModifiers: false))
+        XCTAssertFalse(tap.flagsChanged(keyCode: 63, fnDown: true, otherModifiers: false))
+        XCTAssertTrue(tap.flagsChanged(keyCode: 63, fnDown: false, otherModifiers: false))
+        XCTAssertFalse(tap.flagsChanged(keyCode: 63, fnDown: false, otherModifiers: false))
+        _ = tap.flagsChanged(keyCode: 63, fnDown: true, otherModifiers: false)
+        tap.cancelChord()
+        XCTAssertFalse(tap.flagsChanged(keyCode: 63, fnDown: false, otherModifiers: false))
+        _ = tap.flagsChanged(keyCode: 63, fnDown: true, otherModifiers: false)
+        _ = tap.flagsChanged(keyCode: 56, fnDown: true, otherModifiers: true)
+        _ = tap.flagsChanged(keyCode: 56, fnDown: true, otherModifiers: false)
+        XCTAssertFalse(tap.flagsChanged(keyCode: 63, fnDown: false, otherModifiers: false))
+        _ = tap.flagsChanged(keyCode: 63, fnDown: true, otherModifiers: false)
+        _ = tap.flagsChanged(keyCode: 57, fnDown: true, otherModifiers: false)
+        XCTAssertFalse(tap.flagsChanged(keyCode: 63, fnDown: false, otherModifiers: false))
+        // Arrow/function-key events can carry the function flag without a physical Fn tap.
+        XCTAssertFalse(tap.flagsChanged(keyCode: 123, fnDown: true, otherModifiers: false))
+        XCTAssertFalse(tap.flagsChanged(keyCode: 63, fnDown: false, otherModifiers: false))
+        _ = tap.flagsChanged(keyCode: 63, fnDown: true, otherModifiers: true)
+        XCTAssertFalse(tap.flagsChanged(keyCode: 63, fnDown: false, otherModifiers: false))
+    }
     func testShortcutRejectsTypingKeysAndMalformedSavedValues() {
         XCTAssertFalse(Shortcut(keyCode: 0, modifiers: []).isValid)
         XCTAssertFalse(Shortcut(keyCode: 0, modifiers: [.shift]).isValid)
@@ -88,6 +120,7 @@ final class SessionGateTests {
 @main enum CoreChecks {
  static func main() {
   let tests = SessionGateTests()
+  tests.testFnTapFiresOnceOnReleaseAndIgnoresChords()
   tests.testShortcutRejectsTypingKeysAndMalformedSavedValues()
   tests.testOnlyFinalResultForCurrentRecordingCanComplete()
   tests.testCancelledRequestCannotOverwriteNewDictation()

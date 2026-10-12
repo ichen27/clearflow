@@ -21,6 +21,12 @@ import ClearFlowCore
         }
         require(shortcut.register(first), "initial registration")
         require(shortcut.register(first), "reapplying the current shortcut")
+        if !AXIsProcessTrusted() {
+            require(!shortcut.register(.fn), "Fn must not report active without Accessibility")
+            let old = reserve(first.keyCode)
+            if let old { UnregisterEventHotKey(old) }
+            require(old == nil, "permission failure must preserve the Carbon binding")
+        }
         guard let conflict = reserve(second.keyCode) else { fatalError("Test combination already occupied") }
         require(!shortcut.register(second), "conflicting shortcut must be rejected")
         let stolen = reserve(first.keyCode)
@@ -75,6 +81,25 @@ import ClearFlowCore
         NotificationCenter.default.post(name: NSWindow.didResignKeyNotification, object: window)
         require(!recorder.isRecording, "leaving window cancels recording")
         shortcut.unregister()
+        // Exercise Fn recorder flags directly without posting any events to other apps.
+        recorder.onCapture = { value in chosen = value; return nil }
+        recorder.onEnd = nil
+        recorder.performClick(nil)
+        func fnEvent(_ flags: NSEvent.ModifierFlags) -> NSEvent {
+            NSEvent.keyEvent(with: .flagsChanged, location: .zero, modifierFlags: flags, timestamp: 0,
+                windowNumber: window.windowNumber, context: nil, characters: "", charactersIgnoringModifiers: "",
+                isARepeat: false, keyCode: 63)!
+        }
+        recorder.flagsChanged(with: fnEvent(.function))
+        require(recorder.isRecording, "Fn down must wait for release")
+        recorder.flagsChanged(with: fnEvent([]))
+        require(!recorder.isRecording && chosen == .fn, "Fn release saves Fn alone")
+        recorder.performClick(nil)
+        recorder.flagsChanged(with: fnEvent(.function))
+        recorder.keyDown(with: key(0, [.function, .control]))
+        recorder.flagsChanged(with: fnEvent([]))
+        require(recorder.isRecording && chosen == .fn, "Fn chord cannot be captured as another shortcut")
+        recorder.cancelRecording()
         print("PASS: shortcut recorder key capture, invalid input, Escape and focus loss")
         print("PASS: Carbon registration, reapply, conflict preservation, replacement and cleanup")
     }

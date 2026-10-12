@@ -13,6 +13,8 @@ public struct Shortcut: Codable, Equatable {
     public var keyCode: UInt32
     public var modifiers: Modifiers
     public init(keyCode: UInt32, modifiers: Modifiers) { self.keyCode = keyCode; self.modifiers = modifiers }
+    public static let fn = Self(keyCode: 63, modifiers: [])
+    public var isFn: Bool { self == .fn }
     public static let `default` = Self(keyCode: 49, modifiers: [.option, .shift])
     public static let keys: [(code: UInt32, name: String)] = [
         (49, "Space"), (0, "A"), (11, "B"), (8, "C"), (2, "D"), (14, "E"), (3, "F"),
@@ -25,11 +27,13 @@ public struct Shortcut: Codable, Equatable {
         (98, "F7"), (100, "F8"), (101, "F9"), (109, "F10"), (103, "F11"), (111, "F12")
     ]
     public var isValid: Bool {
-        modifiers.rawValue & ~UInt32(15) == 0 &&
+        if isFn { return true }
+        return modifiers.rawValue & ~UInt32(15) == 0 &&
         !modifiers.intersection([.control, .option, .command]).isEmpty &&
         Self.keys.contains { $0.code == keyCode }
     }
     public var keycaps: [String] {
+        if isFn { return ["Fn"] }
         var labels: [String] = []
         if modifiers.contains(.control) { labels.append("⌃") }
         if modifiers.contains(.option) { labels.append("⌥") }
