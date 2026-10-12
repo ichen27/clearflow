@@ -51,7 +51,7 @@ The configuration command sends the token directly into macOS Keychain without d
 
 ### Change the shortcut
 
-In **Settings → General**, click the shortcut beside the pencil. Choose modifiers and a key, then click **Apply shortcut**. Changes take effect immediately and survive a restart; no service configuration or separate Save is required. Include Control, Option, or Command. Key names refer to US keyboard positions. If macOS reports a conflict, ClearFlow keeps the previous shortcut. Avoid combinations already used by your editor or system; some app-local shortcuts cannot be detected. **Use default**, then Apply, restores Option–Shift–Space. Finish or cancel active dictation before editing.
+In **Settings → General**, click the shortcut, then press your new key combination. It saves immediately and survives a restart; no separate Apply or Save is required. Press **Escape**, click elsewhere, or leave the app to cancel. Include Control, Option, or Command with a letter, number, Space, or F-key. Key names refer to US keyboard positions. If macOS reports a conflict, try another combination or cancel to restore the previous shortcut. Avoid combinations already used by your editor or system; some app-local shortcuts cannot be detected. Press Option–Shift–Space in the recorder to restore the default. Finish or cancel active dictation before editing.
 
 ### 3. Dictate
 

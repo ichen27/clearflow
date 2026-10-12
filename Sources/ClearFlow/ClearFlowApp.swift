@@ -78,6 +78,7 @@ import ClearFlowCore
         model.showWindow = { [weak self] in self?.showWindow() }
         shortcut.onPress = { [weak self] in self?.model.toggle() }
         model.shortcutAvailable = shortcut.register(model.shortcut)
+        model.suspendShortcut = { [weak self] in self?.shortcut.unregister() }
         model.registerShortcut = { [weak self] value in
             guard let self else { return false }
             return self.shortcut.register(value)

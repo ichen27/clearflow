@@ -23,12 +23,25 @@ import ClearFlowCore
     @Published var microphoneGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     @Published var shortcutAvailable = true
     @Published private(set) var shortcut = AppSettings.shortcut
+    @Published var shortcutMessage = ""
+    private var recordingShortcut = false
+    var suspendShortcut: (() -> Void)?
+    func beginShortcutRecording() {
+        guard !busy else { return }
+        recordingShortcut = true
+        suspendShortcut?()
+    }
+    func endShortcutRecording() {
+        guard recordingShortcut else { return }
+        recordingShortcut = false
+        shortcutAvailable = registerShortcut?(shortcut) ?? false
+    }
     var registerShortcut: ((Shortcut) -> Bool)?
     func changeShortcut(_ value: Shortcut) -> String? {
         guard !busy else { return "Finish or cancel dictation before changing the shortcut." }
         guard value.isValid else { return "Include Control, Option, or Command with a key." }
         guard let registerShortcut, registerShortcut(value) else {
-            return "Could not register this shortcut. It may be used by another app or macOS. Choose another combination; your previous shortcut is unchanged."
+            return "This shortcut is unavailable or used by another app."
         }
         AppSettings.shortcut = value
         shortcut = value; shortcutAvailable = true
@@ -85,6 +98,7 @@ import ClearFlowCore
         }
     }
     func toggle() {
+        guard !recordingShortcut else { return }
         switch mode {
         case .recording: stop()
         case .transcribing, .requestingPermission, .testingInsertion: cancel()
@@ -92,7 +106,7 @@ import ClearFlowCore
         }
     }
     func start() {
-        guard !busy else { return }
+        guard !busy, !recordingShortcut else { return }
         guard Endpoint.validated(AppSettings.endpoint) != nil, !TokenStore.read().isEmpty else {
             status = "Connect your transcription service in Settings."; mode = .error; showWindow?(); return
         }

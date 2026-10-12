@@ -264,7 +264,6 @@ private struct FlowSettings: View {
     @ObservedObject var model: DictationModel
     @Environment(\.dismiss) private var dismiss
     @State private var section = "General"
-    @State private var editingShortcut = false
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
@@ -326,14 +325,10 @@ private struct FlowSettings: View {
                     Text("Press once to speak. Press again to finish.").font(.system(size: 12)).foregroundStyle(FlowTheme.muted)
                 }
                 Spacer()
-                Button { editingShortcut = true } label: {
-                    HStack { Text(model.shortcut.display); Image(systemName: "pencil") }
-                }.buttonStyle(FlowButton()).disabled(model.busy)
-                    .accessibilityLabel("Change shortcut")
-                    .popover(isPresented: $editingShortcut) {
-                        ShortcutEditor(model: model, draft: model.shortcut)
-                    }
+                ShortcutRecorder(model: model).frame(width: 165, height: 34)
             }
+            Text(model.shortcutMessage.isEmpty ? "Click the shortcut, then press the new key combination." : model.shortcutMessage)
+                .font(.caption).foregroundStyle(FlowTheme.muted).padding(.top, 8)
             if !model.shortcutAvailable { Text("This shortcut is unavailable. Choose another combination above, or use Start dictation.")
                 .font(.caption).foregroundStyle(.orange).padding(.top, 8) }
             rule()
@@ -382,45 +377,23 @@ private struct FlowSettings: View {
         }
     }
 }
-private struct ShortcutEditor: View {
+private struct ShortcutRecorder: NSViewRepresentable {
     @ObservedObject var model: DictationModel
-    @State var draft: Shortcut
-    @State private var error = ""
-    @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Change shortcut").font(.headline)
-            Text("Choose modifiers and a key. Applies immediately.")
-                .font(.caption).foregroundStyle(.secondary)
-            HStack {
-                modifier("⌃ Control", .control)
-                modifier("⌥ Option", .option)
-                modifier("⇧ Shift", .shift)
-                modifier("⌘ Command", .command)
-            }
-            Picker("Key (US keyboard positions)", selection: $draft.keyCode) {
-                ForEach(Shortcut.keys, id: \.code) { key in Text(key.name).tag(key.code) }
-            }
-            .onChange(of: draft.keyCode) { _, _ in error = "" }
-            Text(draft.display).font(.title3.monospaced())
-            if !draft.isValid { Text("Include Control, Option, or Command.").font(.caption).foregroundStyle(.orange) }
-            if !error.isEmpty { Text(error).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
-            HStack {
-                Button("Use default") { draft = .default; error = "" }
-                Spacer()
-                Button("Cancel") { dismiss() }
-                Button("Apply shortcut") {
-                    if let issue = model.changeShortcut(draft) { error = issue }
-                    else { dismiss() }
-                }.disabled(!draft.isValid || model.busy)
-            }
-        }.padding(22).frame(width: 470)
+    func makeNSView(context: Context) -> ShortcutRecorderButton {
+        let button = ShortcutRecorderButton(frame: .zero)
+        button.onBegin = { model.beginShortcutRecording() }
+        button.onEnd = { model.endShortcutRecording() }
+        button.onCapture = { model.changeShortcut($0) }
+        button.onMessage = { model.shortcutMessage = $0 }
+        return button
     }
-    private func modifier(_ title: String, _ flag: Shortcut.Modifiers) -> some View {
-        Toggle(title, isOn: Binding(get: { draft.modifiers.contains(flag) }, set: { enabled in
-            if enabled { draft.modifiers.insert(flag) } else { draft.modifiers.remove(flag) }
-            error = ""
-        })).toggleStyle(.checkbox).font(.caption)
+    func updateNSView(_ button: ShortcutRecorderButton, context: Context) {
+        button.savedTitle = model.shortcut.display
+        button.isEnabled = !model.busy
+        if model.busy { button.cancelRecording() }
+    }
+    static func dismantleNSView(_ button: ShortcutRecorderButton, coordinator: ()) {
+        button.cancelRecording()
     }
 }
 struct Waveform: View {
