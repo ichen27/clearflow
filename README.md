@@ -2,7 +2,7 @@
 
 **Speak naturally. Keep your words on your own hardware.**
 
-ClearFlow is an open-source macOS menu bar dictation app. Press **Option–Shift–Space**, speak, and press again to transcribe into the selected text field. Run **Whisper large-v3-turbo locally through MLX** on your own Apple Silicon Mac. You can also use another Mac you control, or explicitly configure your own Cloudflare Workers AI Nova 3 service.
+ClearFlow is an open-source macOS dictation app with Dock and menu bar access. Press **Option–Shift–Space**, speak, and press again to transcribe into the selected text field. Run **Whisper large-v3-turbo locally through MLX** on your own Apple Silicon Mac. You can also use another Mac you control, or explicitly configure your own Cloudflare Workers AI Nova 3 service.
 
 No account with ClearFlow, bundled hosted service, or automatic cloud fallback. Independent project; not affiliated with Wispr.
 
@@ -21,6 +21,12 @@ You need an **Apple Silicon Mac (M1 or newer), macOS 14+, Python 3.12**, and sev
 ### 1. Get the app and source
 
 Download `ClearFlow-macOS-arm64.zip` from [Releases](../../releases), extract it and move ClearFlow.app to Applications. Download the matching source archive, or clone this repository. Open a terminal in the source directory.
+
+Open **Applications → ClearFlow**. To keep it in your Dock, right-click its Dock icon and choose **Options → Keep in Dock**. Clicking the Dock icon reopens the main window. Closing the window leaves the dictation shortcut running; use **ClearFlow → Quit ClearFlow** (Command–Q) to quit.
+
+![ClearFlow app icon](assets/AppIcon.png)
+
+[Editable icon source and reproduction instructions](assets/README.md).
 
 Alternatively, build it yourself:
 

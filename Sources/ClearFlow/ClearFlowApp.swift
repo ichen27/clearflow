@@ -55,7 +55,8 @@ import ClearFlowCore
     private var startItem: NSMenuItem!
     private var statusMenuItem: NSMenuItem!
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+        NSApp.setActivationPolicy(.regular)
+        installMainMenu()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "ClearFlow")
         let menu = NSMenu()
@@ -103,6 +104,33 @@ import ClearFlowCore
             }
             overlay.orderFrontRegardless()
         } else { overlay.orderOut(nil) }
+    }
+    // Opening from Finder or the Dock should restore the controls, even after closing them.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showWindow()
+        return true
+    }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    private func installMainMenu() {
+        let main = NSMenu()
+        let appItem = NSMenuItem()
+        let appMenu = NSMenu(title: "ClearFlow")
+        appMenu.addItem(withTitle: "Hide ClearFlow", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(.separator())
+        let quitItem = appMenu.addItem(withTitle: "Quit ClearFlow", action: #selector(quit), keyEquivalent: "q")
+        quitItem.target = self
+        appItem.submenu = appMenu
+        main.addItem(appItem)
+        let editItem = NSMenuItem()
+        let edit = NSMenu(title: "Edit")
+        for (title, action, key) in [("Undo", "undo:", "z"), ("Redo", "redo:", "Z"),
+                                     ("Cut", "cut:", "x"), ("Copy", "copy:", "c"),
+                                     ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] {
+            edit.addItem(withTitle: title, action: Selector(action), keyEquivalent: key)
+        }
+        editItem.submenu = edit
+        main.addItem(editItem)
+        NSApp.mainMenu = main
     }
     @objc func toggle() { model.toggle() }
     @objc func showWindow() {
