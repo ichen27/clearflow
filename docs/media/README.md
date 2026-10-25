@@ -10,3 +10,7 @@ python3 scripts/assemble-demo.py work/media docs/media
 ```
 
 The renderer bypasses normal app startup and does not read Keychain or saved transcript history. Never replace these with screenshots containing personal dictations, tokens, endpoints or account details.
+
+## Recording recovery warning
+
+[recovery-warning.png](recovery-warning.png) renders the actual nonactivating warning component with synthetic copy. It illustrates the message retained after unexpected recording termination; it is not evidence of a physical device interruption. The existing --render-media command produces this image alongside the walkthrough frames.

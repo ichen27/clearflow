@@ -38,7 +38,9 @@ final class ClockRecorder: AudioRecording {
         guard !recorder.active, FileManager.default.fileExists(atPath: audio!.url.path) else { fatalError("Explicit stop must retain audio for transcription") }
         let saved = audio!.url
         audio = nil
-        guard !FileManager.default.fileExists(atPath: saved.path) else { fatalError("Releasing a completed/cancelled request must delete temporary audio") }
-        print("PASS: capture remains active at 60 minutes (simulated clock); explicit stop/cancel and temporary file lifetime")
+        guard FileManager.default.fileExists(atPath: saved.path) else { fatalError("Unfinished audio must survive release") }
+        try RecordedAudio(url: saved).discard()
+        guard !FileManager.default.fileExists(atPath: saved.path) else { fatalError("Explicit discard must delete audio") }
+        print("PASS: capture remains active at 60 minutes (simulated clock); explicit stop/cancel and durable file lifetime")
     }
 }

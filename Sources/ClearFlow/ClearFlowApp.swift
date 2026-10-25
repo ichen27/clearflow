@@ -83,7 +83,7 @@ import ClearFlowCore
             guard let self else { return false }
             return self.shortcut.register(value)
         }
-        subscription = model.$mode.combineLatest(model.$status, model.$shortcut).sink { [weak self] _, _, _ in
+        subscription = model.$mode.combineLatest(model.$status, model.$shortcut, model.$recordingNotice).sink { [weak self] _, _, _, _ in
             DispatchQueue.main.async { self?.refresh() }
         }
         refresh()
@@ -96,7 +96,9 @@ import ClearFlowCore
         startItem.title = action + "     " + model.shortcut.display
         statusItem.button?.image = NSImage(systemSymbolName: model.mode == .recording ? "mic.fill" : model.mode == .transcribing ? "hourglass" : "waveform",
                                            accessibilityDescription: "ClearFlow")
-        if model.busy {
+        if model.busy || !model.recordingNotice.isEmpty {
+            let fitting = overlay.contentView?.fittingSize ?? NSSize(width: 118, height: 46)
+            overlay.setContentSize(fitting)
             let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
             if let screen {
                 overlay.setFrameOrigin(NSPoint(x: screen.visibleFrame.midX - overlay.frame.width / 2, y: screen.visibleFrame.minY + 34))
@@ -147,7 +149,16 @@ import ClearFlowCore
         window?.makeKeyAndOrderFront(nil)
     }
     @objc func quit() { NSApp.terminate(nil) }
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard model.busy else { return .terminateNow }
+        let alert = NSAlert()
+        alert.messageText = model.mode == .recording ? "Recording will end if you quit." : "Transcription is still running."
+        alert.informativeText = "Your audio will stay saved on this Mac. Reopen ClearFlow and choose Recover to finish the transcript."
+        alert.addButton(withTitle: "Keep ClearFlow open")
+        alert.addButton(withTitle: "Quit and keep audio")
+        return alert.runModal() == .alertSecondButtonReturn ? .terminateNow : .terminateCancel
+    }
     func applicationWillTerminate(_ notification: Notification) {
-        model.cancel(); shortcut.unregister()
+        model.prepareForQuit(); shortcut.unregister()
     }
 }
