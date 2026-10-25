@@ -2,7 +2,7 @@
 
 The approved five-bar waveform uses an ivory mark on a softly shaded dark tile, with transparent macOS icon margins. No third-party artwork is included.
 
-- `AppIcon.png`: approved 1280-pixel bitmap master; edit this file to change the artwork.
+- `AppIcon.png`: approved 1254-pixel bitmap master; edit this file to change the artwork.
 - `AppIcon.icns`: Finder, Dock and application-switcher icon, bundled by `scripts/build-app.sh`.
 - `../scripts/generate-icon.sh`: packages the master into all standard icon resolutions using macOS image tools.
 - `../scripts/render-app-icon.swift`: retained editable drawing source for the earlier seven-bar concept; it does not generate the current icon.
