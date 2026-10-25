@@ -36,8 +36,15 @@ if info_path.exists():
         errors.append("Release endpoint must be loopback")
     if info.get("CFBundleIdentifier") != "org.clearflow.app":
         errors.append("Release bundle identifier must be generic")
+    if info.get("LSUIElement") is not False:
+        errors.append("Release must be a Dock-visible application")
+    if info.get("CFBundleIconFile") != "AppIcon":
+        errors.append("Release must declare its app icon")
+    icon = info_path.parent / "Resources/AppIcon.icns"
+    if not icon.exists() or not icon.read_bytes().startswith(b"icns"):
+        errors.append("Release must include a valid ICNS icon")
     bundle = info_path.parent.parent
-    allowed = {"Contents/Info.plist", "Contents/MacOS/ClearFlow", "Contents/_CodeSignature/CodeResources"}
+    allowed = {"Contents/Info.plist", "Contents/Resources/AppIcon.icns", "Contents/MacOS/ClearFlow", "Contents/_CodeSignature/CodeResources"}
     for path in bundle.rglob("*"):
         if path.is_file():
             relative = path.relative_to(bundle).as_posix()
