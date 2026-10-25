@@ -30,8 +30,7 @@ import ClearFlowCore
             let path = args[2], endpoint = AppSettings.endpoint, token = TokenStore.read()
             Task.detached {
                 do {
-                    let data = try Data(contentsOf: URL(fileURLWithPath: path))
-                    let reply = try await TranscriptionClient.transcribe(audio: data, id: UUID(), endpoint: endpoint,
+                    let reply = try await TranscriptionClient.transcribe(file: URL(fileURLWithPath: path), id: UUID(), endpoint: endpoint,
                                                                        token: token, language: "en", vocabulary: "")
                     print(reply.text); exit(0)
                 } catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
