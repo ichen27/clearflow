@@ -1,16 +1,17 @@
 # ClearFlow app icon
 
-The original seven-bar ClearFlow waveform uses a white mark on a dark plum rounded tile, with transparent macOS icon margins. It follows the app's existing waveform identity. No third-party artwork is included.
+The approved five-bar waveform uses an ivory mark on a softly shaded dark tile, with transparent macOS icon margins. No third-party artwork is included.
 
+- `AppIcon.png`: approved 1254-pixel bitmap master; edit this file to change the artwork.
 - `AppIcon.icns`: Finder, Dock and application-switcher icon, bundled by `scripts/build-app.sh`.
-- `AppIcon.png`: 1024-pixel transparent preview/export.
-- `../scripts/render-app-icon.swift`: editable native drawing source, under the repository MIT license.
+- `../scripts/generate-icon.sh`: packages the master into all standard icon resolutions using macOS image tools.
+- `../scripts/render-app-icon.swift`: retained editable drawing source for the earlier seven-bar concept; it does not generate the current icon.
 
-Rebuild all icon resolutions on macOS with Command Line Tools installed:
+Rebuild the ICNS on macOS:
 
 ```sh
 scripts/generate-icon.sh
 scripts/build-app.sh
 ```
 
-The ICNS contains 16, 32, 64, 128, 256, 512 and 1024-pixel images. Builds use the committed icon, so routine app compilation does not require regeneration.
+The ICNS contains 16, 32, 64, 128, 256, 512 and 1024-pixel images. Builds use the committed ICNS; normal app compilation does not regenerate the artwork. Icon assets and the retained drawing source are covered by the repository MIT license.
