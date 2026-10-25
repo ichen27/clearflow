@@ -11,7 +11,7 @@ cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 python3 - "$APP" "http://127.0.0.1:8768" <<'PY'
 import pathlib,plistlib,sys
 app=pathlib.Path(sys.argv[1])
-info={"CFBundleName":"ClearFlow","CFBundleDisplayName":"ClearFlow","CFBundleIdentifier":"org.clearflow.app","CFBundleExecutable":"ClearFlow","CFBundlePackageType":"APPL","CFBundleShortVersionString":"0.4.5","CFBundleVersion":"13","LSMinimumSystemVersion":"14.0","LSUIElement":False,"CFBundleIconFile":"AppIcon","NSHighResolutionCapable":True,"NSMicrophoneUsageDescription":"ClearFlow records your voice only when you start dictation, then sends it to the transcription service you configure.","ClearFlowEndpoint":sys.argv[2]}
+info={"CFBundleName":"ClearFlow","CFBundleDisplayName":"ClearFlow","CFBundleIdentifier":"org.clearflow.app","CFBundleExecutable":"ClearFlow","CFBundlePackageType":"APPL","CFBundleShortVersionString":"0.4.6","CFBundleVersion":"14","LSMinimumSystemVersion":"14.0","LSUIElement":False,"CFBundleIconFile":"AppIcon","NSHighResolutionCapable":True,"NSMicrophoneUsageDescription":"ClearFlow records your voice only when you start dictation, then sends it to the transcription service you configure.","ClearFlowEndpoint":sys.argv[2]}
 (app/"Contents/Info.plist").write_bytes(plistlib.dumps(info))
 PY
 # Remove linker debug records containing the build machine absolute source paths.

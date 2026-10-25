@@ -60,7 +60,7 @@ import ClearFlowCore
     private var currentID: UUID?
     private var target: InsertionTarget?
     private var captureIssue: String?
-    private var pendingAudio: Data?
+    private var pendingAudio: RecordedAudio?
     private var ticker: Timer?
     private var requestTask: Task<Void, Never>?
     private var workspaceObserver: NSObjectProtocol?
@@ -85,7 +85,13 @@ import ClearFlowCore
                       app.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
                 Task { @MainActor [weak self] in self?.lastExternalApp = app }
             }
-        capture.onAutomaticStop = { [weak self] in self?.stop() }
+        capture.onUnexpectedStop = { [weak self] message in
+            guard let self, self.mode == .recording else { return }
+            self.ticker?.invalidate(); self.ticker = nil
+            self.pendingAudio = try? self.capture.stop()
+            self.gate.cancel(); self.mode = .error; self.level = 0
+            self.status = message + (self.pendingAudio == nil ? " Please start again." : " Retry to transcribe the saved audio.")
+        }
     }
     func refreshPermissions() {
         guard !demoMode else { return }
@@ -164,14 +170,17 @@ import ClearFlowCore
             gate.cancel(); mode = .error; status = error.localizedDescription
         }
     }
-    private func transcribe(_ audio: Data, id: UUID) {
+    private func transcribe(_ audio: RecordedAudio, id: UUID) {
         mode = .transcribing; status = "Turning speech into text…"; level = 0
         let endpoint = AppSettings.endpoint, token = TokenStore.read()
         let language = AppSettings.language, vocabulary = AppSettings.vocabulary
         requestTask = Task {
             do {
-                let reply = try await TranscriptionClient.transcribe(audio: audio, id: id, endpoint: endpoint,
-                                                                     token: token, language: language, vocabulary: vocabulary)
+                let reply = try await TranscriptionClient.transcribe(file: audio.url, id: id, endpoint: endpoint,
+                                                                     token: token, language: language, vocabulary: vocabulary,
+                                                                     progress: { [weak self] part, count in
+                    await self?.transcriptionProgress(part: part, count: count, id: id)
+                })
                 guard !Task.isCancelled, gate.acceptResult(id) else { return }
                 let text = reply.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !text.isEmpty else {
@@ -192,6 +201,10 @@ import ClearFlowCore
                 gate.cancel(); mode = .error; status = error.localizedDescription
             }
         }
+    }
+    private func transcriptionProgress(part: Int, count: Int, id: UUID) {
+        guard currentID == id, mode == .transcribing else { return }
+        status = count > 1 ? "Transcribing part \(part) of \(count)…" : "Turning speech into text…"
     }
     func retry() {
         guard let audio = pendingAudio, !busy else { return }

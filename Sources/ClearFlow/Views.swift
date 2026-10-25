@@ -364,7 +364,7 @@ private struct FlowSettings: View {
             SecureField(model.hasToken ? "Saved in Keychain — leave blank to keep" : "Private service token", text: $model.token)
                 .textFieldStyle(.roundedBorder).padding(.top, 10)
             Button("Check connection") { model.testConnection() }.buttonStyle(FlowButton()).padding(.top, 20)
-            Text("Transcription begins when you finish speaking. Up to 4 minutes 55 seconds per recording.")
+            Text("Recording continues until you stop or cancel. Longer recordings are transcribed in parts after you stop.")
                 .font(.system(size: 12)).foregroundStyle(FlowTheme.muted).lineSpacing(3).padding(.top, 20)
         }
     }
