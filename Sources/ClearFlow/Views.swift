@@ -27,6 +27,7 @@ struct MainView: View {
     @State private var showSettings = false
     @State private var query = ""
     @State private var searching = false
+    @State private var discardURL: URL?
     private var words: Int { model.history.reduce(0) { $0 + $1.text.split(whereSeparator: { $0.isWhitespace }).count } }
     private var filtered: [Transcript] {
         model.history.filter { query.isEmpty || $0.text.localizedCaseInsensitiveContains(query) }
@@ -55,6 +56,13 @@ struct MainView: View {
         .preferredColorScheme(.light)
         .sheet(isPresented: $showSettings) { FlowSettings(model: model) }
         .onAppear { model.refreshPermissions() }
+        .alert("Discard saved recording?", isPresented: Binding(get: { discardURL != nil }, set: { if !$0 { discardURL = nil } })) {
+            Button("Keep", role: .cancel) { discardURL = nil }
+            Button("Discard", role: .destructive) {
+                if let url = discardURL { model.discardRecovery(url) }
+                discardURL = nil
+            }
+        } message: { Text("This permanently deletes the audio. Recover it first if you need its transcript.") }
     }
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -130,6 +138,23 @@ struct MainView: View {
                             }
                             Spacer(minLength: 0)
                         }.padding(14).background(FlowTheme.shell, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    if !model.recoverableRecordings.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("SAVED RECORDINGS").font(.caption).fontWeight(.semibold)
+                            Text("Unfinished audio stays on this Mac until recovered or discarded.").font(.caption)
+                            ScrollView {
+                                ForEach(model.recoverableRecordings, id: \.self) { url in
+                                    HStack {
+                                        Text((try? url.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast,
+                                             format: .dateTime.month().day().hour().minute()).font(.caption)
+                                        Spacer()
+                                        Button("Recover") { model.recover(url) }.disabled(model.busy)
+                                        Button("Discard") { discardURL = url }.disabled(model.busy)
+                                    }
+                                }
+                            }.frame(maxHeight: 90)
+                        }.padding(12).background(FlowTheme.selected, in: RoundedRectangle(cornerRadius: 10))
                     }
                     history
                 }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -371,11 +396,11 @@ private struct FlowSettings: View {
     private var privacy: some View {
         Group {
             Toggle("Save recent transcripts on this Mac", isOn: $model.saveHistory).font(.system(size: 13, weight: .medium))
-            Text("When off, recent dictations stay in memory. Turning this off and saving removes the saved history file.")
+            Text("On by default. Transcripts are saved before insertion and survive restarting. Turning this off and saving removes saved history; new successful dictations then stay in memory only.")
                 .font(.system(size: 12)).foregroundStyle(FlowTheme.muted).lineSpacing(4).padding(.top, 10)
             rule()
             Text("Your audio").font(.system(size: 14, weight: .medium))
-            Text("Audio is sent only to the service address you configure when you finish. Local Whisper runs on your own hardware; a cloud endpoint sends audio to that provider. There is no automatic cloud fallback. Temporary recordings are deleted on normal finish or cancel. Failed requests can keep audio in memory so you can retry.")
+            Text("After recording ends, audio is sent only to the service address you configure, including recovery after an unexpected stop. Local Whisper runs on your own hardware; a cloud endpoint sends audio to that provider. There is no automatic cloud fallback. Recordings are stored privately on this Mac until transcription succeeds or you explicitly discard them. Interrupted or failed recordings survive restarting; recover or discard them under Saved Recordings. Cancel while recording discards that recording; cancel while transcribing preserves it for recovery.")
                 .font(.system(size: 12)).foregroundStyle(FlowTheme.muted).lineSpacing(4).padding(.top, 9)
             Text("No screen content is uploaded.").font(.system(size: 12)).padding(.top, 12)
             rule()
@@ -459,10 +484,26 @@ struct RecordingBar: View {
 struct OverlayView: View {
     @ObservedObject var model: DictationModel
     var body: some View {
-        RecordingBar(samples: model.meter.samples, recording: model.mode == .recording,
-                     processingLabel: model.mode == .testingInsertion ? "Testing" : model.mode == .transcribing ? "Transcribing" : "Microphone",
-                     onCancel: { model.cancel() }, onFinish: { model.stop() })
-            .shadow(color: .black.opacity(0.2), radius: 5, y: 2).padding(8)
+        VStack(spacing: 8) {
+            if !model.recordingNotice.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(model.mode == .recording ? "Recording needs attention" : "Recording update",
+                          systemImage: "exclamationmark.triangle.fill").font(.system(size: 12, weight: .semibold))
+                    Text(model.recordingNotice).font(.system(size: 12)).lineLimit(5).fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        Button("Open ClearFlow") { model.showWindow?() }
+                        Spacer()
+                        Button("Dismiss") { model.recordingNotice = "" }
+                    }.font(.system(size: 11))
+                }.padding(12).frame(width: 310).foregroundStyle(.white)
+                    .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: 12))
+            }
+            if model.busy {
+                RecordingBar(samples: model.meter.samples, recording: model.mode == .recording,
+                             processingLabel: model.status,
+                             onCancel: { model.cancel() }, onFinish: { model.stop() })
+            }
+        }.shadow(color: .black.opacity(0.2), radius: 5, y: 2).padding(8)
     }
 }
 

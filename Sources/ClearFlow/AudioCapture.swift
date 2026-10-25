@@ -16,8 +16,10 @@ extension AVAudioRecorder: AudioRecording {}
 
 @MainActor final class AudioCapture: NSObject, AVAudioRecorderDelegate {
     private var recorder: AudioRecording?
+    private let directory: URL
     private let makeRecorder: (URL, [String: Any]) throws -> AudioRecording
-    init(makeRecorder: @escaping (URL, [String: Any]) throws -> AudioRecording = { try AVAudioRecorder(url: $0, settings: $1) }) {
+    init(directory: URL = RecordingStore.directory, makeRecorder: @escaping (URL, [String: Any]) throws -> AudioRecording = { try AVAudioRecorder(url: $0, settings: $1) }) {
+        self.directory = directory
         self.makeRecorder = makeRecorder
         super.init()
     }
@@ -30,10 +32,9 @@ extension AVAudioRecorder: AudioRecording {}
         return max(0, min(1, (Double(recorder.averagePower(forChannel: 0)) + 55) / 55))
     }
     func start() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ClearFlow", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
                                                attributes: [.posixPermissions: 0o700])
-        let url = directory.appendingPathComponent(UUID().uuidString).appendingPathExtension("wav")
+        let url = directory.appendingPathComponent(UUID().uuidString).appendingPathExtension("wav").standardizedFileURL
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 16000,
             AVNumberOfChannelsKey: 1, AVLinearPCMBitDepthKey: 16,
@@ -41,7 +42,13 @@ extension AVAudioRecorder: AudioRecording {}
         ]
         let r = try makeRecorder(url, settings)
         r.delegate = self; r.isMeteringEnabled = true
-        guard r.prepareToRecord(), r.record() else {
+        guard r.prepareToRecord() else {
+            try? FileManager.default.removeItem(at: url)
+            throw AppError.message("The microphone could not prepare. Check your input device.")
+        }
+        do { try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path) }
+        catch { try? FileManager.default.removeItem(at: url); throw error }
+        guard r.record() else {
             try? FileManager.default.removeItem(at: url)
             throw AppError.message("The microphone could not start. Check the selected input in System Settings.")
         }
@@ -76,9 +83,27 @@ extension AVAudioRecorder: AudioRecording {}
     }
 }
 
-/// Owns the temporary recording through transcription and retry; removes it on release.
+/// Durable until explicitly discarded or a transcript has been saved successfully.
 final class RecordedAudio {
     let url: URL
-    init(url: URL) { self.url = url }
-    deinit { try? FileManager.default.removeItem(at: url) }
+    init(url: URL) { self.url = url.standardizedFileURL }
+    func discard() throws {
+        if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+    }
+}
+
+enum RecordingStore {
+    static var directory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("ClearFlow/Recordings", isDirectory: true)
+    }
+    static func recordings(in directory: URL = directory) throws -> [URL] {
+        guard FileManager.default.fileExists(atPath: directory.path) else { return [] }
+        return try FileManager.default.contentsOfDirectory(at: directory,
+            includingPropertiesForKeys: [.creationDateKey, .isRegularFileKey])
+            .filter { $0.pathExtension == "wav" && (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
+            .map { $0.standardizedFileURL }
+            .sorted { ((try? $0.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast)
+                > ((try? $1.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast) }
+    }
 }

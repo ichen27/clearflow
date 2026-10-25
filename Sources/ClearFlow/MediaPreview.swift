@@ -9,6 +9,11 @@ import SwiftUI
         let model = DictationModel(demo: true)
         try save(MainView(renderForDocumentation: true, model: model).frame(width: 1120, height: 780),
                  to: directory.appendingPathComponent("screenshot.png"))
+        let recovery = DictationModel(demo: true)
+        recovery.mode = .ready
+        recovery.recordingNotice = "Recording stopped unexpectedly. Your recovered transcript is saved in Recent Dictations."
+        try save(OverlayView(model: recovery).frame(width: 360, height: 200),
+                 to: directory.appendingPathComponent("recovery-warning.png"))
         for frame in 0..<48 {
             try save(Walkthrough(frame: frame).frame(width: 960, height: 560),
                      to: directory.appendingPathComponent(String(format: "frame-%03d.png", frame)))

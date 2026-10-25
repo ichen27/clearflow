@@ -21,7 +21,7 @@ struct AppSettings {
         set { defaults.set(newValue, forKey: "language") }
     }
     static var saveHistory: Bool {
-        get { defaults.bool(forKey: "saveHistory") }
+        get { defaults.object(forKey: "saveHistory") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "saveHistory") }
     }
 }
@@ -70,15 +70,15 @@ enum HistoryStore {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("ClearFlow/history.json")
     }
-    static func load() -> [Transcript] {
-        guard AppSettings.saveHistory, let data = try? Data(contentsOf: url),
+    static func load(from url: URL = url, enabled: Bool = AppSettings.saveHistory) -> [Transcript] {
+        guard enabled, let data = try? Data(contentsOf: url),
               let items = try? JSONDecoder().decode([Transcript].self, from: data) else { return [] }
-        return Array(items.prefix(50))
+        return items
     }
-    static func save(_ items: [Transcript]) throws {
+    static func save(_ items: [Transcript], to url: URL = url) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true,
                                                attributes: [.posixPermissions: 0o700])
-        let data = try JSONEncoder().encode(Array(items.prefix(50)))
+        let data = try JSONEncoder().encode(items)
         try data.write(to: url, options: .atomic)
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
     }
