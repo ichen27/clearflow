@@ -32,7 +32,7 @@ import ClearFlowCore
                 do {
                     let reply = try await TranscriptionClient.transcribe(file: URL(fileURLWithPath: path), id: UUID(), endpoint: endpoint,
                                                                        token: token, language: "en", vocabulary: "")
-                    print(reply.text); exit(0)
+                    print(AppSettings.cleanUp ? TranscriptCleanup.clean(reply.text) : reply.text); exit(0)
                 } catch { fputs("\(error.localizedDescription)\n", stderr); exit(1) }
             }
             dispatchMain()
