@@ -7,6 +7,10 @@ import plistlib
 import subprocess
 from runtime import DEFAULT_RUNTIME, LABEL, environment
 
+# Dictation waits on this service. launchd throttles CPU and disk I/O for Background
+# jobs, including paging the model back in, so it runs with app-level priority.
+PROCESS_TYPE = "Interactive"
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime", type=Path, default=DEFAULT_RUNTIME)
@@ -26,7 +30,7 @@ def main():
         "Label": LABEL, "ProgramArguments": [str(python), "-u", str(project / "local-stt/server.py")],
         "WorkingDirectory": str(project), "EnvironmentVariables": env,
         "RunAtLoad": True, "KeepAlive": True, "ThrottleInterval": 30,
-        "ProcessType": "Background", "Umask": 0o077,
+        "ProcessType": PROCESS_TYPE, "Umask": 0o077,
         "StandardOutPath": str(logs / "service.stdout.log"),
         "StandardErrorPath": str(logs / "service.stderr.log"),
     }

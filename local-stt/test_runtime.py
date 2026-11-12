@@ -5,6 +5,8 @@ import stat
 import tempfile
 import unittest
 from runtime import prepare, environment
+import importlib
+from server import wired_limit, WIRED_HEADROOM
 
 class RuntimeTests(unittest.TestCase):
     def test_independent_runtimes_have_unique_credentials_and_private_files(self):
@@ -34,3 +36,12 @@ class RuntimeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             for port in [0, 80, 65536]:
                 with self.assertRaises(ValueError): prepare(directory, port)
+    def test_wired_limit_covers_peak_and_stays_below_system_cap(self):
+        gib = 1024 ** 3
+        self.assertEqual(wired_limit(3 * gib, 12 * gib), 3 * gib + WIRED_HEADROOM)
+        self.assertEqual(wired_limit(12 * gib, 12 * gib), int(12 * gib * 0.9))
+        self.assertEqual(wired_limit(0, 12 * gib), 0)
+        self.assertEqual(wired_limit(3 * gib, 0), 0)
+    def test_launch_agent_is_not_throttled_as_background_work(self):
+        agent = importlib.import_module("install-agent")
+        self.assertEqual(agent.PROCESS_TYPE, "Interactive")
