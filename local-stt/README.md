@@ -68,7 +68,9 @@ Use the HTTPS URL printed by **your** Tailscale installation, not an address cop
 
 `GET /health` reports the model and backend. Authenticated `POST /v1/transcribe` accepts JSON `{requestId, audio, language?, vocabulary?}`. `audio` is canonical base64 of a complete 16 kHz mono PCM16 WAV, 0.25–300 seconds, at most 10 MiB. Body limit: 14 MiB. Response: `{text, requestId, model, durationMs}`.
 
-Only one upload/inference runs at a time; overlap returns 429. Audio stays in process memory. Requests/transcripts are not persisted or logged. Language detection and vocabulary hints are supported, but hints do not guarantee spelling. Whisper may hallucinate on noise or very quiet audio; exact digital silence is rejected.
+Only one upload/inference runs at a time; overlap returns 429.
+
+The model is kept wired in memory (about 2.3 GB for this model) so macOS cannot page it out while the service is idle; otherwise the first dictation after a quiet period can wait many seconds for the model to page back in. MLX's idle buffer cache is capped at 256 MiB. Set `CLEARFLOW_KEEP_RESIDENT=0` in the service environment to give that memory back to other apps at the cost of slower first requests. The LaunchAgent runs as an `Interactive` process so launchd does not throttle it like background maintenance work. Audio stays in process memory. Requests/transcripts are not persisted or logged. Language detection and vocabulary hints are supported, but hints do not guarantee spelling. Whisper may hallucinate on noise or very quiet audio; exact digital silence is rejected.
 
 ## Troubleshooting and validation
 

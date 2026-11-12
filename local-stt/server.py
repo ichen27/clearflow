@@ -180,15 +180,39 @@ def make_server(token, infer, port=0):
     server.inference_lock = threading.Lock()
     return server
 
+MIB = 1024 * 1024
+CACHE_LIMIT = 256 * MIB
+WIRED_HEADROOM = 256 * MIB
+
+def wired_limit(peak, recommended):
+    """Bytes to keep resident: the warm-up peak plus headroom, below the system cap.
+
+    Whisper always decodes padded 30-second windows, so a short warm-up reaches
+    the same working set as a real request.
+    """
+    if peak <= 0 or recommended <= 0:
+        return 0
+    return min(peak + WIRED_HEADROOM, int(recommended * 0.9))
+
 class WhisperEngine:
-    def __init__(self, model_path):
+    def __init__(self, model_path, keep_resident=True):
         import mlx.core as mx
         import numpy as np
         import mlx_whisper
         self.np, self.transcribe, self.model_path = np, mlx_whisper.transcribe, model_path
+        # Freed activation buffers otherwise stay cached and double the idle footprint.
+        mx.set_cache_limit(CACHE_LIMIT)
         # Preload weights and tokenizer; the model remains resident between requests.
         self.transcribe(np.zeros(16000, dtype=np.float32), path_or_hf_repo=model_path,
                         language="en", verbose=None, temperature=0.0)
+        self.wired = 0
+        if keep_resident:
+            # An idle model is paged out under memory pressure, and the next request
+            # then waits seconds for gigabytes to page back in. Wiring prevents that.
+            info = mx.device_info() if hasattr(mx, "device_info") else mx.metal.device_info()
+            self.wired = wired_limit(mx.get_peak_memory(), info.get("max_recommended_working_set_size", 0))
+            if self.wired:
+                mx.set_wired_limit(self.wired)
     def __call__(self, audio, language, vocabulary):
         with wave.open(io.BytesIO(audio), "rb") as f:
             samples = self.np.frombuffer(f.readframes(f.getnframes()), dtype="<i2").astype(self.np.float32) / 32768.0
@@ -209,11 +233,13 @@ def main():
     model_path = os.environ["CLEARFLOW_MODEL_PATH"]
     # MLX work runs on one persistent thread, including initialization.
     with ThreadPoolExecutor(max_workers=1) as pool:
-        engine = pool.submit(WhisperEngine, model_path).result()
+        keep_resident = os.environ.get("CLEARFLOW_KEEP_RESIDENT", "1") != "0"
+        engine = pool.submit(WhisperEngine, model_path, keep_resident).result()
         def infer(*args):
             return pool.submit(engine, *args).result()
         server = make_server(token, infer, int(os.environ.get("CLEARFLOW_PORT", "8768")))
-        print(json.dumps({"event": "ready", "model": MODEL, "port": server.server_port}), flush=True)
+        print(json.dumps({"event": "ready", "model": MODEL, "port": server.server_port,
+                          "wiredMiB": engine.wired // MIB}), flush=True)
         server.serve_forever()
 
 if __name__ == "__main__":
