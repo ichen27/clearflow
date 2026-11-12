@@ -14,7 +14,7 @@ swiftc -parse-as-library -I "$BUILD_DIR/Modules" "$BUILD_DIR"/ClearFlowCore.buil
 
 swiftc -parse-as-library -I "$BUILD_DIR/Modules" "$BUILD_DIR"/ClearFlowCore.build/*.o \
   Sources/ClearFlow/SettingsStore.swift Sources/ClearFlow/AudioCapture.swift \
-  Sources/ClearFlow/TranscriptionClient.swift Sources/ClearFlow/TextInsertion.swift \
+  Sources/ClearFlow/TranscriptionClient.swift Sources/ClearFlow/TranscriptPolish.swift Sources/ClearFlow/TextInsertion.swift \
   Sources/ClearFlow/DictationModel.swift Tests/RecoveryChecks.swift \
   -o "$BUILD_DIR/RecoveryChecks"
 "$BUILD_DIR/RecoveryChecks"

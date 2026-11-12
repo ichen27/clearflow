@@ -21,6 +21,10 @@ import ClearFlowCore
     @Published var vocabulary = AppSettings.vocabulary
     @Published var saveHistory = AppSettings.saveHistory
     @Published var cleanUp = AppSettings.cleanUp
+    @Published var polish = AppSettings.polish
+    @Published var polishModel = AppSettings.polishModel
+    @Published var claudeKey = ""
+    @Published var hasClaudeKey = false
     @Published var settingsMessage = ""
     @Published var hasAccessibility = AXIsProcessTrusted()
     @Published var microphoneGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
@@ -92,6 +96,7 @@ import ClearFlowCore
         }
         history = HistoryStore.load()
         hasToken = !TokenStore.read().isEmpty
+        hasClaudeKey = !TokenStore.read(account: TokenStore.claudeAccount).isEmpty
         lastExternalApp = NSWorkspace.shared.frontmostApplication
         workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] note in
@@ -241,6 +246,8 @@ import ClearFlowCore
         let endpoint = AppSettings.endpoint, token = transcribeRecording == nil ? TokenStore.read() : ""
         let language = AppSettings.language, vocabulary = AppSettings.vocabulary
         let cleanUp = AppSettings.cleanUp
+        let polishKey = AppSettings.polish && transcribeRecording == nil ? TokenStore.read(account: TokenStore.claudeAccount) : ""
+        let polishModel = AppSettings.polishModel
         requestTask = Task {
             do {
                 let reply: TranscriptionReply
@@ -252,7 +259,15 @@ import ClearFlowCore
                 }) }
                 guard !Task.isCancelled, gate.acceptResult(id) else { return }
                 let raw = reply.text.trimmingCharacters(in: .whitespacesAndNewlines)
-                let text = cleanUp ? TranscriptCleanup.clean(raw) : raw
+                var text = cleanUp ? TranscriptCleanup.clean(raw) : raw
+                var polishNote = ""
+                if !polishKey.isEmpty, !text.isEmpty {
+                    status = "Polishing…"
+                    do { text = try await TranscriptPolish.polish(text, apiKey: polishKey, model: polishModel, vocabulary: vocabulary) }
+                    catch is CancellationError { return }
+                    catch { polishNote = " Polish skipped: " + ((error as? LocalizedError)?.errorDescription ?? "Claude was unavailable or changed too much.") }
+                    guard !Task.isCancelled, currentID == id else { return }
+                }
                 guard !text.isEmpty else {
                     mode = .error; status = "No speech was detected. Audio saved for recovery."
                     recordingNotice = status; refreshRecoveries(); return
@@ -278,7 +293,7 @@ import ClearFlowCore
                 else if let insertTranscript { outcome = await insertTranscript(text) }
                 else { outcome = await TextInsertion.insert(text, target: target, captureIssue: captureIssue, fitToCursor: cleanUp) }
                 guard !Task.isCancelled, currentID == id else { return }
-                status = outcome; mode = .ready
+                status = outcome + polishNote; mode = .ready
                 // History-off is an explicit privacy choice; retain interrupted audio until discarded.
                 if saveHistory || !interrupted {
                     do { try audio.discard(); pendingAudio = nil }
@@ -362,10 +377,17 @@ import ClearFlowCore
         }
         do {
             if !token.isEmpty { try TokenStore.save(token); token = "" }
+            if !claudeKey.isEmpty {
+                try TokenStore.save(claudeKey, account: TokenStore.claudeAccount); claudeKey = ""; hasClaudeKey = true
+            }
+            if polish && !hasClaudeKey { settingsMessage = "Enter a Claude API key to polish transcripts."; return }
             guard !TokenStore.read().isEmpty else { settingsMessage = "Enter your private service token."; return }
             AppSettings.endpoint = url.absoluteString; endpoint = url.absoluteString
             AppSettings.language = lang; language = lang
             AppSettings.vocabulary = vocabulary; AppSettings.saveHistory = saveHistory; AppSettings.cleanUp = cleanUp
+            AppSettings.polish = polish
+            let model = polishModel.trimmingCharacters(in: .whitespacesAndNewlines)
+            AppSettings.polishModel = model.isEmpty ? Polish.defaultModel : model; polishModel = AppSettings.polishModel
             if saveHistory { try HistoryStore.save(history) } else { try HistoryStore.clear() }
             hasToken = true; settingsMessage = "Saved. Your access token is in macOS Keychain."
         } catch { settingsMessage = error.localizedDescription }

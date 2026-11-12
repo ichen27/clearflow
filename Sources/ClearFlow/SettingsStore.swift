@@ -24,6 +24,14 @@ struct AppSettings {
         get { defaults.object(forKey: "cleanUpTranscripts") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "cleanUpTranscripts") }
     }
+    static var polish: Bool {
+        get { defaults.bool(forKey: "polishWithClaude") }
+        set { defaults.set(newValue, forKey: "polishWithClaude") }
+    }
+    static var polishModel: String {
+        get { defaults.string(forKey: "polishModel") ?? Polish.defaultModel }
+        set { defaults.set(newValue, forKey: "polishModel") }
+    }
     static var saveHistory: Bool {
         get { defaults.object(forKey: "saveHistory") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "saveHistory") }
@@ -33,7 +41,8 @@ struct AppSettings {
 enum TokenStore {
     static let service = "org.clearflow.app"
     static let account = "service-token"
-    static func read() -> String {
+    static let claudeAccount = "claude-api-key"
+    static func read(account: String = account) -> String {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service, kSecAttrAccount as String: account,
             kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
@@ -42,7 +51,7 @@ enum TokenStore {
               let data = result as? Data else { return "" }
         return String(data: data, encoding: .utf8) ?? ""
     }
-    static func save(_ token: String) throws {
+    static func save(_ token: String, account: String = account) throws {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service, kSecAttrAccount as String: account]
         let value = Data(token.trimmingCharacters(in: .whitespacesAndNewlines).utf8)
