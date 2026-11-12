@@ -63,8 +63,8 @@ In **Settings → General**, click the shortcut, then press your new key combina
 
 1. Open ClearFlow. In Settings → General, allow Microphone and Accessibility through the normal macOS prompts.
 2. Select an editable field in another app. Press **Option–Shift–Space** to start; the compact meter follows microphone input.
-3. Speak, then press the shortcut again. Keep the selected field and cursor unchanged while transcription runs.
-4. If insertion cannot be verified or the destination changed, ClearFlow keeps the transcript on the clipboard for manual paste. Check the app’s status for details.
+3. Speak, then press the shortcut again. The transcript is pasted at the cursor in that app when it is ready, even if you moved the cursor or kept typing meanwhile.
+4. If you switched to another app, the focused control is not editable, or it is a password field, ClearFlow puts the transcript on the clipboard for manual paste instead. If a paste cannot be confirmed through Accessibility, the transcript also stays on the clipboard. Check the app’s status for details.
 
 There is no elapsed-time cutoff: recording continues until you finish or cancel. After you finish, longer recordings are transcribed sequentially in parts of at most four minutes and combined into one result. Nothing is uploaded or inserted while you are recording. A word spanning a part boundary may be less accurate. Device interruptions or disk errors can still stop capture. A persistent warning appears and ClearFlow attempts to transcribe the available audio into Recent Dictations without pasting at a stale cursor. Low disk space triggers an advance warning; a sudden hardware failure cannot always be predicted. Quitting during capture or transcription asks for confirmation and retains audio.
 
@@ -81,7 +81,7 @@ Deploy the supplied Worker in **your own account**, generate your own secret, an
 - The only bundled endpoint is loopback. Audio and vocabulary go only to the address you explicitly configure. No automatic provider fallback.
 - Local Whisper holds request audio in memory and does not log audio or transcripts. Setup downloads dependencies/model weights; runtime uses the local model with Hugging Face offline mode.
 - Audio is stored in ~/Library/Application Support/ClearFlow/Recordings with private file permissions. It is deleted after successful transcription (and history persistence when enabled) or explicit discard. Failed, interrupted or paused requests retain audio across new recordings and app restarts. Review or delete these files under Saved Recordings; no automatic expiry. Existing temporary files from older versions are not imported.
-- Field content is read locally to guard insertion and is not uploaded. Known secure fields are rejected.
+- Field content is read locally to confirm insertion and is not uploaded. Known secure fields are rejected.
 - Transcript history is saved on this Mac by default, without automatic pruning, in ~/Library/Application Support/ClearFlow/history.json. Existing explicit history-off preferences are respected. Disable it in Settings → Data & privacy and save to remove stored history; ordinary completed dictations then stay in memory only. Interrupted audio remains recoverable until discarded. Clear recent history removes transcripts, not unfinished audio. Clipboard fallback leaves text available until replaced.
 - Your endpoint is stored in macOS preferences; the token is stored in Keychain. Keep credentials, recordings, personal endpoints and runtime data out of Git.
 

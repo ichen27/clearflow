@@ -76,7 +76,7 @@ Only one upload/inference runs at a time; overlap returns 429. Audio stays in pr
 - 401: configure the client with the token belonging to this runtime.
 - 429: wait for the current recording to finish.
 - Permission errors on another drive: approve macOS Files & Folders access normally.
-- No insertion: check Accessibility, select an editable field before starting, and keep its content/cursor unchanged. Use clipboard fallback when needed.
+- No insertion: check Accessibility and keep the app you dictated into in front until the transcript arrives. Use clipboard fallback when needed.
 
 ```sh
 python3 -m unittest discover -s local-stt -v

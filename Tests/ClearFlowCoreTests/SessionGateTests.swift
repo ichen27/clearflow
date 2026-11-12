@@ -106,6 +106,23 @@ final class SessionGateTests {
         XCTAssertFalse(PasteRestoration.allowed(expected: "hello", observed: "hello", clipboardUnchanged: false), "Never replace a newer user copy")
         XCTAssertTrue(PasteRestoration.allowed(expected: "hello", observed: "hello", clipboardUnchanged: true))
     }
+    func testEditableFieldsIncludeWebAndCustomEditors() {
+        XCTAssertTrue(Editability.allows(role: "AXTextArea", insideEditableContent: false, exposesTextSelection: false, valueSettable: false))
+        XCTAssertTrue(Editability.allows(role: "AXGroup", insideEditableContent: true, exposesTextSelection: false, valueSettable: false),
+                      "contenteditable web editors report an editable ancestor")
+        XCTAssertTrue(Editability.allows(role: "AXUnknown", insideEditableContent: false, exposesTextSelection: true, valueSettable: true))
+        XCTAssertFalse(Editability.allows(role: "AXSlider", insideEditableContent: false, exposesTextSelection: false, valueSettable: true),
+                       "a settable non-text value is not a cursor")
+        XCTAssertFalse(Editability.allows(role: "AXButton", insideEditableContent: false, exposesTextSelection: false, valueSettable: false))
+    }
+    func testPastePredictionUsesTheCursorAtPasteTime() {
+        XCTAssertEqual(PastePrediction.result(of: "big ", in: "a dog", location: 2, length: 0), "a big dog")
+        XCTAssertEqual(PastePrediction.result(of: "cat", in: "a dog", location: 2, length: 3), "a cat")
+        XCTAssertEqual(PastePrediction.result(of: "é", in: "👍", location: 2, length: 0), "👍é")
+        XCTAssertNil(PastePrediction.result(of: "x", in: "abc", location: 2, length: 5))
+        XCTAssertNil(PastePrediction.result(of: "x", in: nil, location: 0, length: 0))
+        XCTAssertNil(PastePrediction.result(of: "x", in: "abc", location: nil, length: nil))
+    }
     func testEndpointRejectsCredentialAndQueryLeakage() {
         XCTAssertEqual(Endpoint.validated("https://example.workers.dev/")?.absoluteString, "https://example.workers.dev")
         XCTAssertNil(Endpoint.validated("http://public.example"))
@@ -128,6 +145,8 @@ final class SessionGateTests {
   tests.testClipboardMustWaitForObservedInsertion()
   tests.testMeterTracksActualInputAndReturnsToSilence()
   tests.testDestinationUsesLiveFocusAndReportsPermissionFirst()
+  tests.testEditableFieldsIncludeWebAndCustomEditors()
+  tests.testPastePredictionUsesTheCursorAtPasteTime()
   if failures > 0 { print("\(failures) failures"); exit(1) }
   print("PASS: session lifecycle, cancellation/stale result, duplicate result, endpoint validation")
  }
