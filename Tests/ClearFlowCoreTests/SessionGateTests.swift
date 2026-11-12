@@ -158,6 +158,38 @@ final class SessionGateTests {
         XCTAssertEqual(TranscriptCleanup.fit("Hello.", before: "(", after: ")"), "Hello.")
         XCTAssertEqual(TranscriptCleanup.fit("Line one.\nLine two.", before: "Intro", after: ""), " Line one.\nLine two.")
     }
+    func testPolishRequestUsesMessagesAPIWithFallbackAndLowEffort() {
+        let request = Polish.request(for: "hello there", vocabulary: " ClearFlow, Exampletown ", model: " ")
+        let json = String(data: try! JSONEncoder().encode(request), encoding: .utf8)!
+        XCTAssertTrue(json.contains("\"model\":\"claude-opus-5-5\""), json)
+        XCTAssertTrue(json.contains("\"fallbacks\":\"default\""), json)
+        XCTAssertTrue(json.contains("\"effort\":\"low\""), json)
+        XCTAssertTrue(json.contains(#"<transcript>\nhello there\n<\/transcript>"#), json)
+        XCTAssertTrue(json.contains("ClearFlow, Exampletown"), "vocabulary spellings reach the editor")
+        XCTAssertFalse(json.contains("temperature"), "sampling parameters are rejected by the API")
+        XCTAssertEqual(Polish.request(for: "x", vocabulary: "", model: "claude-haiku-5-5").model, "claude-haiku-5-5")
+    }
+    func testPolishParsesTextAndRejectsUnsafeReplies() {
+        let ok = #"{"content":[{"type":"thinking","thinking":""},{"type":"text","text":"Hello, there."}],"stop_reason":"end_turn"}"#
+        XCTAssertEqual(try? Polish.text(from: Data(ok.utf8)), "Hello, there.")
+        let refused = #"{"content":[],"stop_reason":"refusal"}"#
+        XCTAssertNil(try? Polish.text(from: Data(refused.utf8)))
+        let cut = #"{"content":[{"type":"text","text":"Hel"}],"stop_reason":"max_tokens"}"#
+        XCTAssertNil(try? Polish.text(from: Data(cut.utf8)))
+        XCTAssertNil(try? Polish.text(from: Data("not json".utf8)))
+
+        XCTAssertEqual(Polish.accept("Their going to the store, aren't they?", original: "there going to the store aren't they"),
+                       "Their going to the store, aren't they?")
+        XCTAssertEqual(Polish.accept("Let's meet at 4.", original: "Let's meet at 3, no wait, 4."), "Let's meet at 4.")
+        XCTAssertNil(Polish.accept("Paris is the capital of France.", original: "What's the capital of France?"))
+        XCTAssertEqual(Polish.accept("What's the capital of France?", original: "whats the capital of france"),
+                       "What's the capital of France?")
+        XCTAssertNil(Polish.accept("The capital of France is Paris, a city famous for the Eiffel Tower and its museums.",
+                                   original: "What is the capital of France?"))
+        XCTAssertNil(Polish.accept("Sure! Here is the edited text.", original: "send the report by Friday please"))
+        XCTAssertNil(Polish.accept("   ", original: "hello"))
+        XCTAssertEqual(Polish.accept("<transcript>Hello.</transcript>", original: "hello"), "Hello.")
+    }
     func testEndpointRejectsCredentialAndQueryLeakage() {
         XCTAssertEqual(Endpoint.validated("https://example.workers.dev/")?.absoluteString, "https://example.workers.dev")
         XCTAssertNil(Endpoint.validated("http://public.example"))
@@ -184,6 +216,8 @@ final class SessionGateTests {
   tests.testPastePredictionUsesTheCursorAtPasteTime()
   tests.testCleanupRemovesDisfluenciesWithoutRewording()
   tests.testCleanupFitsTextAroundTheCursor()
+  tests.testPolishRequestUsesMessagesAPIWithFallbackAndLowEffort()
+  tests.testPolishParsesTextAndRejectsUnsafeReplies()
   if failures > 0 { print("\(failures) failures"); exit(1) }
   print("PASS: session lifecycle, cancellation/stale result, duplicate result, endpoint validation")
  }

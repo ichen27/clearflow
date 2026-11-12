@@ -393,6 +393,17 @@ private struct FlowSettings: View {
             SecureField(model.hasToken ? "Saved in Keychain — leave blank to keep" : "Private service token", text: $model.token)
                 .textFieldStyle(.roundedBorder).padding(.top, 10)
             Button("Check connection") { model.testConnection() }.buttonStyle(FlowButton()).padding(.top, 20)
+            rule()
+            Toggle("Polish with Claude", isOn: $model.polish).font(.system(size: 13, weight: .medium))
+            Text("Optional. After cleanup, sends the transcript text (not audio) and your vocabulary to Anthropic to fix grammar, punctuation and self-corrections. Adds a few seconds; if Claude is slow, unavailable or changes the meaning, the cleaned text is used instead.")
+                .font(.system(size: 12)).foregroundStyle(FlowTheme.muted).lineSpacing(3).padding(.top, 8)
+            if model.polish {
+                SecureField(model.hasClaudeKey ? "Claude API key saved in Keychain — leave blank to keep" : "Claude API key", text: $model.claudeKey)
+                    .textFieldStyle(.roundedBorder).padding(.top, 12)
+                TextField(Polish.defaultModel, text: $model.polishModel).textFieldStyle(.roundedBorder).padding(.top, 8)
+                Text("Model ID. A smaller model such as claude-haiku-5-5 responds faster.")
+                    .font(.system(size: 11)).foregroundStyle(FlowTheme.muted).padding(.top, 6)
+            }
             Text("Recording continues until you stop or cancel. Longer recordings are transcribed in parts after you stop.")
                 .font(.system(size: 12)).foregroundStyle(FlowTheme.muted).lineSpacing(3).padding(.top, 20)
         }
@@ -406,7 +417,7 @@ private struct FlowSettings: View {
             Text("Your audio").font(.system(size: 14, weight: .medium))
             Text("After recording ends, audio is sent only to the service address you configure, including recovery after an unexpected stop. Local Whisper runs on your own hardware; a cloud endpoint sends audio to that provider. There is no automatic cloud fallback. Recordings are stored privately on this Mac until transcription succeeds or you explicitly discard them. Interrupted or failed recordings survive restarting; recover or discard them under Saved Recordings. Cancel while recording discards that recording; cancel while transcribing preserves it for recovery.")
                 .font(.system(size: 12)).foregroundStyle(FlowTheme.muted).lineSpacing(4).padding(.top, 9)
-            Text("No screen content is uploaded.").font(.system(size: 12)).padding(.top, 12)
+            Text("No screen content is uploaded. If Polish with Claude is on, transcript text is sent to Anthropic.").font(.system(size: 12)).padding(.top, 12)
             rule()
             Button("Clear recent history") { model.clearHistory() }.buttonStyle(FlowButton())
         }

@@ -68,6 +68,8 @@ In **Settings → General**, click the shortcut, then press your new key combina
 
 Transcripts are cleaned up before insertion: hesitations such as “um” and “uh”, stutters and stray spacing are removed, a standalone “new line” or “new paragraph” becomes a line break, and spacing and capitalization follow the text at the cursor. Wording is not rewritten. Turn this off under Settings → General → Clean up transcripts.
 
+Optionally, **Polish with Claude** (Settings → Transcription, off by default) sends the cleaned transcript text and your vocabulary to the Anthropic Messages API with your own API key to fix grammar, punctuation and self-corrections. It defaults to `claude-opus-5-5` at low effort with server-side refusal fallback; set another model ID, such as `claude-haiku-5-5`, for faster replies. Polish adds network and model time. If it fails, takes longer than 8 seconds, or returns something that no longer reads as the same dictation (for example, an answer to a dictated question), the cleaned text is inserted instead and the status says why.
+
 There is no elapsed-time cutoff: recording continues until you finish or cancel. After you finish, longer recordings are transcribed sequentially in parts of at most four minutes and combined into one result. Nothing is uploaded or inserted while you are recording. A word spanning a part boundary may be less accurate. Device interruptions or disk errors can still stop capture. A persistent warning appears and ClearFlow attempts to transcribe the available audio into Recent Dictations without pasting at a stale cursor. Low disk space triggers an advance warning; a sudden hardware failure cannot always be predicted. Quitting during capture or transcription asks for confirmation and retains audio.
 
 Transcripts are saved locally **before insertion**, with history enabled by default. Under **Saved Recordings**, choose **Recover** for unfinished audio from an interruption, failed request or previous launch, or **Discard** to delete it. Recovery never automatically pastes. Cancel with the overlay’s × while recording to discard that recording; cancelling while transcribing pauses delivery and keeps the audio. Damaged or unfinalized audio after a crash may not be transcribable, but is retained for inspection or explicit discard.
@@ -84,6 +86,7 @@ Deploy the supplied Worker in **your own account**, generate your own secret, an
 - Local Whisper holds request audio in memory and does not log audio or transcripts. Setup downloads dependencies/model weights; runtime uses the local model with Hugging Face offline mode.
 - Audio is stored in ~/Library/Application Support/ClearFlow/Recordings with private file permissions. It is deleted after successful transcription (and history persistence when enabled) or explicit discard. Failed, interrupted or paused requests retain audio across new recordings and app restarts. Review or delete these files under Saved Recordings; no automatic expiry. Existing temporary files from older versions are not imported.
 - Field content is read locally to confirm insertion and is not uploaded. Known secure fields are rejected.
+- With Polish with Claude turned on, transcript text and vocabulary (never audio or field content) are sent to Anthropic under your API key, which is stored in Keychain. It is off by default.
 - Transcript history is saved on this Mac by default, without automatic pruning, in ~/Library/Application Support/ClearFlow/history.json. Existing explicit history-off preferences are respected. Disable it in Settings → Data & privacy and save to remove stored history; ordinary completed dictations then stay in memory only. Interrupted audio remains recoverable until discarded. Clear recent history removes transcripts, not unfinished audio. Clipboard fallback leaves text available until replaced.
 - Your endpoint is stored in macOS preferences; the token is stored in Keychain. Keep credentials, recordings, personal endpoints and runtime data out of Git.
 
@@ -104,7 +107,7 @@ npm run build
 
 CI validates native compilation/core checks, local API/setup tests, Worker tests/types/dry-run and distribution checks. Hardware inference, permissions and insertion across every editor are not proven by CI. [Contributor workflow](AGENTS.md).
 
-The app currently transcribes after recording stops. Streaming partials, generative rewriting, correction learning and cross-device history sync are not implemented. The local backend uses MLX and requires Apple Silicon.
+The app currently transcribes after recording stops. Streaming partials, correction learning and cross-device history sync are not implemented. The local backend uses MLX and requires Apple Silicon.
 
 ## License
 
