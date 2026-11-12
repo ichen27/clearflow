@@ -20,6 +20,7 @@ import ClearFlowCore
     @Published var language = AppSettings.language
     @Published var vocabulary = AppSettings.vocabulary
     @Published var saveHistory = AppSettings.saveHistory
+    @Published var cleanUp = AppSettings.cleanUp
     @Published var settingsMessage = ""
     @Published var hasAccessibility = AXIsProcessTrusted()
     @Published var microphoneGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
@@ -239,6 +240,7 @@ import ClearFlowCore
         mode = .transcribing; status = "Turning speech into text…"; level = 0
         let endpoint = AppSettings.endpoint, token = transcribeRecording == nil ? TokenStore.read() : ""
         let language = AppSettings.language, vocabulary = AppSettings.vocabulary
+        let cleanUp = AppSettings.cleanUp
         requestTask = Task {
             do {
                 let reply: TranscriptionReply
@@ -249,7 +251,8 @@ import ClearFlowCore
                     await self?.transcriptionProgress(part: part, count: count, id: id)
                 }) }
                 guard !Task.isCancelled, gate.acceptResult(id) else { return }
-                let text = reply.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                let raw = reply.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                let text = cleanUp ? TranscriptCleanup.clean(raw) : raw
                 guard !text.isEmpty else {
                     mode = .error; status = "No speech was detected. Audio saved for recovery."
                     recordingNotice = status; refreshRecoveries(); return
@@ -273,7 +276,7 @@ import ClearFlowCore
                 let outcome: String
                 if interrupted { outcome = saveHistory ? "Recovered transcript saved in Recent Dictations." : "Recovered transcript is available for this session; audio retained." }
                 else if let insertTranscript { outcome = await insertTranscript(text) }
-                else { outcome = await TextInsertion.insert(text, target: target, captureIssue: captureIssue) }
+                else { outcome = await TextInsertion.insert(text, target: target, captureIssue: captureIssue, fitToCursor: cleanUp) }
                 guard !Task.isCancelled, currentID == id else { return }
                 status = outcome; mode = .ready
                 // History-off is an explicit privacy choice; retain interrupted audio until discarded.
@@ -362,7 +365,7 @@ import ClearFlowCore
             guard !TokenStore.read().isEmpty else { settingsMessage = "Enter your private service token."; return }
             AppSettings.endpoint = url.absoluteString; endpoint = url.absoluteString
             AppSettings.language = lang; language = lang
-            AppSettings.vocabulary = vocabulary; AppSettings.saveHistory = saveHistory
+            AppSettings.vocabulary = vocabulary; AppSettings.saveHistory = saveHistory; AppSettings.cleanUp = cleanUp
             if saveHistory { try HistoryStore.save(history) } else { try HistoryStore.clear() }
             hasToken = true; settingsMessage = "Saved. Your access token is in macOS Keychain."
         } catch { settingsMessage = error.localizedDescription }

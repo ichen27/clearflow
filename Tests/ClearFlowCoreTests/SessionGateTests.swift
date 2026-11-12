@@ -123,6 +123,41 @@ final class SessionGateTests {
         XCTAssertNil(PastePrediction.result(of: "x", in: nil, location: 0, length: 0))
         XCTAssertNil(PastePrediction.result(of: "x", in: "abc", location: nil, length: nil))
     }
+    func testCleanupRemovesDisfluenciesWithoutRewording() {
+        func check(_ raw: String, _ expected: String, line: Int = #line) {
+            let actual = TranscriptCleanup.clean(raw)
+            XCTAssertTrue(actual == expected, "\(raw.debugDescription) -> \(actual.debugDescription), expected \(expected.debugDescription)", line: line)
+        }
+        check("Hey, um, can you send me the notes from yesterday's meeting? I think we need to, uh, review the budget before Friday.",
+              "Hey can you send me the notes from yesterday's meeting? I think we need to review the budget before Friday.")
+        check("Um, so we should ship it.", "So we should ship it.")
+        check("Okay. Uh, so the plan works.", "Okay. So the plan works.")
+        check("That's it, um.", "That's it.")
+        check("Okay. Um. Next step.", "Okay. Next step.")
+        check("I I think the the plan is fine.", "I think the plan is fine.")
+        check("I know that that is true and I had had enough. It's very very good.",
+              "I know that that is true and I had had enough. It's very very good.")
+        check("  Extra   spaces , here .  ", "Extra spaces, here.")
+        check("Dear Sam, new line, thanks for the update. New paragraph. See you soon.",
+              "Dear Sam,\nThanks for the update.\n\nSee you soon.")
+        check("We need a new line of products.", "We need a new line of products.")
+        check("Version 3.5 costs $4.99 at 3 p.m. on the U.S. site, e.g. today.",
+              "Version 3.5 costs $4.99 at 3 p.m. on the U.S. site, e.g. today.")
+        check("Summary, umbrella and humble words stay.", "Summary, umbrella and humble words stay.")
+        check("Um", "")
+    }
+    func testCleanupFitsTextAroundTheCursor() {
+        XCTAssertEqual(TranscriptCleanup.fit("Hello there.", before: "", after: ""), "Hello there.")
+        XCTAssertEqual(TranscriptCleanup.fit("Next point.", before: "Done.", after: ""), " Next point.")
+        XCTAssertEqual(TranscriptCleanup.fit("Next point.", before: "Done. ", after: ""), "Next point.")
+        XCTAssertEqual(TranscriptCleanup.fit("The big one.", before: "I want", after: ""), " the big one.")
+        XCTAssertEqual(TranscriptCleanup.fit("Really big.", before: "a ", after: "dog"), "really big ")
+        XCTAssertEqual(TranscriptCleanup.fit("I think so.", before: "and", after: ""), " I think so.")
+        XCTAssertEqual(TranscriptCleanup.fit("I'm in.", before: "and", after: ""), " I'm in.")
+        XCTAssertEqual(TranscriptCleanup.fit("NASA launched.", before: "and", after: ""), " NASA launched.")
+        XCTAssertEqual(TranscriptCleanup.fit("Hello.", before: "(", after: ")"), "Hello.")
+        XCTAssertEqual(TranscriptCleanup.fit("Line one.\nLine two.", before: "Intro", after: ""), " Line one.\nLine two.")
+    }
     func testEndpointRejectsCredentialAndQueryLeakage() {
         XCTAssertEqual(Endpoint.validated("https://example.workers.dev/")?.absoluteString, "https://example.workers.dev")
         XCTAssertNil(Endpoint.validated("http://public.example"))
@@ -147,6 +182,8 @@ final class SessionGateTests {
   tests.testDestinationUsesLiveFocusAndReportsPermissionFirst()
   tests.testEditableFieldsIncludeWebAndCustomEditors()
   tests.testPastePredictionUsesTheCursorAtPasteTime()
+  tests.testCleanupRemovesDisfluenciesWithoutRewording()
+  tests.testCleanupFitsTextAroundTheCursor()
   if failures > 0 { print("\(failures) failures"); exit(1) }
   print("PASS: session lifecycle, cancellation/stale result, duplicate result, endpoint validation")
  }

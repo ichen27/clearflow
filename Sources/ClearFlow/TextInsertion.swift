@@ -67,8 +67,9 @@ struct InsertionCapture {
         return InsertionCapture(target: InsertionTarget(pid: pid,
             name: NSRunningApplication(processIdentifier: pid)?.localizedName ?? "your app"), issue: nil)
     }
-    static func insert(_ text: String, target: InsertionTarget?, captureIssue: String? = nil) async -> String {
-        let outcome = await attemptInsertion(text, target: target, captureIssue: captureIssue)
+    static func insert(_ text: String, target: InsertionTarget?, captureIssue: String? = nil,
+                       fitToCursor: Bool = false) async -> String {
+        let outcome = await attemptInsertion(text, target: target, captureIssue: captureIssue, fitToCursor: fitToCursor)
         // Keep the destination app in front. A rejected insertion still leaves usable
         // text for an ordinary user-initiated paste, without opening the hub.
         guard !Task.isCancelled, outcome.hasPrefix("Ready to copy — ") else { return outcome }
@@ -103,7 +104,17 @@ struct InsertionCapture {
         !CGEventSource.flagsState(.combinedSessionState)
             .intersection([.maskCommand, .maskShift, .maskAlternate, .maskControl, .maskSecondaryFn]).isEmpty
     }
-    private static func attemptInsertion(_ text: String, target: InsertionTarget?, captureIssue: String?) async -> String {
+    /// Up to a few characters on each side of the cursor, for spacing and capitalization.
+    private static func surroundings(of value: String?, range: CFRange?) -> (before: String, after: String) {
+        guard let value, let range, range.location >= 0, range.length >= 0 else { return ("", "") }
+        let text = value as NSString
+        guard range.location + range.length <= text.length else { return ("", "") }
+        let start = max(0, range.location - 32), end = range.location + range.length
+        return (text.substring(with: NSRange(location: start, length: range.location - start)),
+                text.substring(with: NSRange(location: end, length: min(8, text.length - end))))
+    }
+    private static func attemptInsertion(_ text: String, target: InsertionTarget?, captureIssue: String?,
+                                         fitToCursor: Bool) async -> String {
         guard AXIsProcessTrusted() else {
             return "Ready to copy — enable Accessibility for ClearFlow in System Settings to insert automatically."
         }
@@ -130,6 +141,11 @@ struct InsertionCapture {
         guard !Task.isCancelled else { return "Cancelled — transcript kept." }
         let before = attribute(focused, kAXValueAttribute) as? String
         let range = selectedRange(focused)
+        var text = text
+        if fitToCursor {
+            let context = surroundings(of: before, range: range)
+            text = TranscriptCleanup.fit(text, before: context.before, after: context.after)
+        }
         let expected = PastePrediction.result(of: text, in: before,
                                               location: range.map { $0.location }, length: range.map { $0.length })
         if let expected, expected == before { return "Inserted into \(target.name) — text already matched." }

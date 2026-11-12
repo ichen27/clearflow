@@ -20,6 +20,10 @@ struct AppSettings {
         get { defaults.string(forKey: "language") ?? "" }
         set { defaults.set(newValue, forKey: "language") }
     }
+    static var cleanUp: Bool {
+        get { defaults.object(forKey: "cleanUpTranscripts") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "cleanUpTranscripts") }
+    }
     static var saveHistory: Bool {
         get { defaults.object(forKey: "saveHistory") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "saveHistory") }
